@@ -1,60 +1,47 @@
 # Stormlane
 
-Weather-aware truck routing. Stormlane asks HERE for three truck routes, samples the Open-Meteo
-forecast at ETA-aware checkpoints along each one, classifies wind/rain/snow risk against the
-truck's load, and recommends the safest route. A 0-48 h heatmap shows how risk moves across the
-corridor over time.
-
-> Status: project scaffold. Routing, weather, risk scoring and the map UI land in follow-up PRs.
+Weather-aware truck routing. Stormlane gets three truck routes from HERE, checks the Open-Meteo
+forecast at points along each route based on when the truck will reach them, scores wind, rain and
+snow risk against the truck's load, and recommends the safest route.
 
 ## Stack
 
-| Layer    | Tech                                                         |
-| -------- | ------------------------------------------------------------ |
-| Frontend | React 18, Vite, TypeScript, Tailwind CSS v4, MapLibre GL JS  |
-| Backend  | Django 5.2 (ASGI, uvicorn), Django REST Framework            |
-| Data     | HERE Routing v8 + Autosuggest, Open-Meteo forecast           |
-| Hosting  | Vercel (frontend), Render (backend)                          |
+- Frontend: React 18, Vite, TypeScript, Tailwind CSS
+- Backend: Django 5.2 (ASGI), Django REST Framework
+- APIs: HERE Routing v8, HERE Autosuggest, Open-Meteo
+- Hosting: Vercel (frontend), Render (backend)
 
-## Repository layout
+## Project structure
 
 ```
-stormlane/
-  backend/                 Django project
-    stormlane/
-      core/                pure-Python geometry + risk algorithms (no I/O)
-      routing/             HERE clients
-      weather/             Open-Meteo client
-      api/                 HTTP endpoints
-    tests/
-  frontend/                Vite + React + TS app
-  .github/workflows/ci.yml lint, type-check, tests for both apps
-  docker-compose.yml       local stack (backend, frontend, redis)
-  .env.example             all environment variables
+backend/
+  stormlane/
+    core/       routing and risk logic
+    routing/    HERE client
+    weather/    Open-Meteo client
+    api/        endpoints
+  tests/
+frontend/
+  src/
 ```
 
-## Prerequisites
+## Setup
 
-- Python 3.14 (3.12+ works)
-- Node 22 (`nvm use` picks it up from `.nvmrc`)
-- Docker (optional, for `docker compose`)
-
-## Getting started
+Requirements: Python 3.12+, Node 22, and optionally Docker.
 
 ```bash
-cp .env.example .env   # add HERE_API_KEY
+cp .env.example .env
 ```
 
-### With Docker
+Add your `HERE_API_KEY` to `.env`.
+
+### Docker
 
 ```bash
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173
-- API health: http://localhost:8000/api/health
-
-### Without Docker
+### Local
 
 Backend:
 
@@ -66,7 +53,7 @@ pip install -r requirements-dev.txt
 uvicorn stormlane.asgi:application --reload --port 8000
 ```
 
-Frontend (in another terminal):
+Frontend:
 
 ```bash
 cd frontend
@@ -75,14 +62,12 @@ npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/api` to `http://localhost:8000`, so `VITE_API_URL` can stay empty
-locally.
+The app runs at http://localhost:5173 and the API at http://localhost:8000. In development, Vite
+proxies `/api` to the backend.
 
-## Quality checks
+## Checks
 
-These are the same commands CI runs.
-
-Backend (from `backend/`):
+Backend:
 
 ```bash
 ruff check .
@@ -91,7 +76,7 @@ mypy .
 pytest
 ```
 
-Frontend (from `frontend/`):
+Frontend:
 
 ```bash
 npm run lint
@@ -103,14 +88,15 @@ npm run build
 
 ## Environment variables
 
-See [`.env.example`](.env.example) for the full list.
-
-| Variable               | Where    | Purpose                                              |
-| ---------------------- | -------- | ---------------------------------------------------- |
-| `DJANGO_DEBUG`         | backend  | Dev mode; also allows a default secret key           |
-| `DJANGO_SECRET_KEY`    | backend  | Required when `DJANGO_DEBUG=false`                   |
-| `DJANGO_ALLOWED_HOSTS` | backend  | Comma-separated hostnames                            |
-| `CORS_ALLOWED_ORIGINS` | backend  | Frontend origins allowed to call the API             |
-| `REDIS_URL`            | backend  | Optional; falls back to in-memory cache when empty   |
-| `HERE_API_KEY`         | backend  | HERE Routing + Geocoding & Search                    |
-| `VITE_API_URL`         | frontend | Backend origin in production; empty in local dev     |
+| Variable               | Description                                  |
+| ---------------------- | -------------------------------------------- |
+| `DJANGO_DEBUG`         | Enables debug mode                           |
+| `DJANGO_SECRET_KEY`    | Required when debug is off                   |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated list of hosts                |
+| `CORS_ALLOWED_ORIGINS` | Origins allowed to call the API              |
+| `CSRF_TRUSTED_ORIGINS` | Trusted origins for CSRF                     |
+| `REDIS_URL`            | Redis cache; uses in-memory cache when empty |
+| `HERE_API_KEY`         | HERE API key                                 |
+| `OPEN_METEO_BASE_URL`  | Open-Meteo forecast endpoint                 |
+| `LOG_LEVEL`            | Log level, defaults to `INFO`                |
+| `VITE_API_URL`         | Backend URL for production builds            |

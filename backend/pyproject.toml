@@ -10,20 +10,7 @@ line-length = 100
 extend-exclude = ["staticfiles"]
 
 [tool.ruff.lint]
-select = [
-  "E",   # pycodestyle errors
-  "W",   # pycodestyle warnings
-  "F",   # pyflakes
-  "I",   # isort
-  "B",   # bugbear
-  "UP",  # pyupgrade
-  "SIM", # simplify
-  "C4",  # comprehensions
-  "DJ",  # django
-  "ASYNC",
-  "RUF",
-  "PT",  # pytest style
-]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "DJ", "ASYNC", "RUF", "PT"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["stormlane"]

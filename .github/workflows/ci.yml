@@ -31,10 +31,10 @@ jobs:
       - run: ruff format --check .
       - run: mypy .
       - run: pytest
-      - name: Django system check (production settings)
-        run: python manage.py check --deploy --fail-level ERROR
+      - name: Django deploy check
+        run: python manage.py check --deploy
         env:
-          DJANGO_SECRET_KEY: ci-only-secret-key-that-is-long-enough-for-the-deploy-check-1234
+          DJANGO_SECRET_KEY: ${{ github.run_id }}-${{ github.sha }}
 
   frontend:
     name: Frontend (eslint, prettier, tsc, vitest, build)
