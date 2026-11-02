@@ -1,0 +1,28 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --color-surface: #0b1220;
+  --color-surface-raised: #111a2e;
+  --color-border: #1f2a44;
+  --color-accent: #38bdf8;
+
+  --color-risk-low: #22c55e;
+  --color-risk-moderate: #eab308;
+  --color-risk-high: #f97316;
+  --color-risk-severe: #dc2626;
+  --color-risk-no-travel: #7e22ce;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-surface font-sans text-slate-100 antialiased;
+  }
+}
