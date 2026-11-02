@@ -6,3 +6,4 @@ djangorestframework-stubs[compatible-mypy]>=3.16
 pytest>=9.2,<10
 pytest-django>=4.14,<5
 pytest-asyncio>=1.4,<2
+hypothesis>=6.170,<7
