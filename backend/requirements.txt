@@ -2,6 +2,7 @@ Django>=5.2.18,<5.3
 djangorestframework>=3.18,<3.19
 django-cors-headers>=4.9,<5
 django-environ>=0.14,<0.15
+numpy>=2.5,<3
 redis>=8.1,<9
 uvicorn[standard]>=0.54,<0.55
 gunicorn>=26.2,<27
