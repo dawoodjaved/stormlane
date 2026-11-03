@@ -18,6 +18,7 @@ DEPARTURE_GRACE = timedelta(minutes=15)
 class PointSerializer(serializers.Serializer[dict[str, Any]]):
     lat = serializers.FloatField(min_value=-90, max_value=90)
     lon = serializers.FloatField(min_value=-180, max_value=180)
+    name = serializers.CharField(required=False, allow_blank=True, max_length=200)
 
 
 class PlanRequestSerializer(serializers.Serializer[dict[str, Any]]):
@@ -116,6 +117,8 @@ class PlanResponseSerializer(serializers.Serializer[dict[str, Any]]):
     load_lb = serializers.FloatField()
     interval_miles = serializers.IntegerField()
     gust_aware = serializers.BooleanField()
+    origin = PlaceSerializer()
+    destination = PlaceSerializer()
     recommendation = RecommendationSerializer()
     routes = RouteSerializer(many=True)
 

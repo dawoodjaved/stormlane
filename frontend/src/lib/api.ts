@@ -12,8 +12,8 @@ export interface Place extends LatLon {
 }
 
 export interface PlanRequest {
-  origin: LatLon
-  destination: LatLon
+  origin: Place
+  destination: Place
   departure: string
   load_lb: number
   interval_miles: 10 | 25 | 50
@@ -61,6 +61,8 @@ export interface Plan {
   load_lb: number
   interval_miles: number
   gust_aware: boolean
+  origin?: Place
+  destination?: Place
   recommendation: {
     route_id: string
     order: string[]
@@ -116,6 +118,11 @@ export function geocode(query: string, signal?: AbortSignal): Promise<Place[]> {
 
 export function createPlan(body: PlanRequest, signal?: AbortSignal): Promise<Plan> {
   return request<Plan>('/api/plan', { method: 'POST', body: JSON.stringify(body), signal })
+}
+
+export function fetchPlan(planId: string, signal?: AbortSignal): Promise<Plan> {
+  const params = new URLSearchParams({ plan_id: planId })
+  return request<Plan>(`/api/plan?${params.toString()}`, { signal })
 }
 
 export function fetchHeatmap(planId: string, signal?: AbortSignal): Promise<Heatmap> {

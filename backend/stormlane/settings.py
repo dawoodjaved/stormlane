@@ -79,6 +79,7 @@ CACHES: dict[str, dict[str, Any]] = {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
             "LOCATION": "stormlane",
             "TIMEOUT": 30 * 60,
+            "OPTIONS": {"MAX_ENTRIES": 20_000},
         }
     )
 }

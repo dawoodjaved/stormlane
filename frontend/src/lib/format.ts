@@ -35,6 +35,10 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+export function prefersMoreContrast(): boolean {
+  return window.matchMedia('(prefers-contrast: more)').matches
+}
+
 export function toDateTimeLocal(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(

@@ -1,11 +1,10 @@
-import 'maplibre-gl/dist/maplibre-gl.css'
-
 import { Map as MapLibreMap, NavigationControl, Popup, setWorkerUrl } from 'maplibre-gl'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url'
 import { useEffect, useRef, useState } from 'react'
 
 import type { Heatmap, Plan } from '../../lib/api.ts'
 import { prefersReducedMotion } from '../../lib/format.ts'
+import { useTheme } from '../../lib/theme.ts'
 import {
   addBaseLayers,
   attachPopup,
@@ -15,7 +14,8 @@ import {
   flyToCheckpoint,
   routeIdFromEvent,
   ROUTE_LINE_LAYERS,
-  syncHeatmap,
+  syncHeatmapData,
+  syncHeatmapHour,
   syncRoutes,
   syncTruck,
 } from './layers.ts'
@@ -23,7 +23,10 @@ import { useMapStore } from './store.ts'
 
 setWorkerUrl(workerUrl)
 
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark'
+const STYLE_URL = {
+  dark: 'https://tiles.openfreemap.org/styles/dark',
+  light: 'https://tiles.openfreemap.org/styles/positron',
+} as const
 const NORTH_AMERICA: [number, number] = [-96, 38.5]
 
 interface Props {
@@ -38,18 +41,33 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
   const popupRef = useRef<Popup | null>(null)
   const fittedFor = useRef<string | null>(null)
   const [ready, setReady] = useState(false)
+  const theme = useTheme()
   const selectedRouteId = useMapStore((state) => state.selectedRouteId)
   const focused = useMapStore((state) => state.focused)
   const hour = useMapStore((state) => state.hour)
+  const fitNonce = useMapStore((state) => state.fitNonce)
+  const planRef = useRef(plan)
+  const heatmapRef = useRef(heatmap)
+  const selectedRef = useRef(selectedRouteId)
+  const hourRef = useRef(hour)
+
+  useEffect(() => {
+    planRef.current = plan
+    heatmapRef.current = heatmap
+    selectedRef.current = selectedRouteId
+    hourRef.current = hour
+  }, [plan, heatmap, selectedRouteId, hour])
 
   useEffect(() => {
     if (!container.current) return
 
+    fittedFor.current = null
     const map = new MapLibreMap({
       container: container.current,
-      style: STYLE_URL,
+      style: STYLE_URL[theme],
       center: NORTH_AMERICA,
       zoom: 3.6,
+      fadeDuration: 0,
       attributionControl: { compact: true },
     })
     const popup = new Popup({ closeButton: false, offset: 12, maxWidth: '240px' })
@@ -59,6 +77,20 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
 
     const onLoad = () => {
       addBaseLayers(map)
+      map.resize()
+      const current = planRef.current
+      const selected = selectedRef.current
+      syncRoutes(map, current, selected)
+      syncHeatmapData(map, heatmapRef.current)
+      syncHeatmapHour(map, hourRef.current)
+      const route =
+        current?.routes.find((item) => item.id === (selected ?? current.recommendation.route_id)) ??
+        current?.routes[0]
+      syncTruck(map, route, hourRef.current)
+      if (current) {
+        fittedFor.current = current.plan_id
+        fitPlan(map, current, prefersReducedMotion())
+      }
       setReady(true)
     }
     map.on('load', onLoad)
@@ -98,7 +130,7 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
       popupRef.current = null
       setReady(false)
     }
-  }, [])
+  }, [theme])
 
   useEffect(() => {
     const map = mapRef.current
@@ -118,8 +150,20 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map?.isStyleLoaded()) return
-    syncHeatmap(map, heatmap, hour)
-  }, [heatmap, hour, ready])
+    syncHeatmapData(map, heatmap)
+  }, [heatmap, ready])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map?.isStyleLoaded()) return
+    syncHeatmapHour(map, hour)
+  }, [hour, ready])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!ready || !map?.isStyleLoaded() || !plan || fitNonce === 0) return
+    fitPlan(map, plan, prefersReducedMotion())
+  }, [fitNonce, plan, ready])
 
   useEffect(() => {
     const map = mapRef.current
@@ -142,17 +186,32 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
     attachPopup(map, popup, checkpoint)
   }, [focused, plan, ready])
 
+  const selectedName =
+    plan?.routes.find((route) => route.id === (selectedRouteId ?? plan.recommendation.route_id))
+      ?.name ?? plan?.routes[0]?.name
+
   return (
     <div className="relative h-full w-full">
-      <div ref={container} className="h-full w-full" role="region" aria-label="Map" />
+      <p id="map-help" className="sr-only">
+        The bright colored line is the selected truck route. Dimmed lines are alternatives. Click a
+        line to select it, or use the route list in the trip planner.
+      </p>
+      <div
+        ref={container}
+        id="map"
+        className="h-full w-full"
+        role="region"
+        aria-label={selectedName ? `Map, ${selectedName} selected` : 'Map'}
+        aria-describedby="map-help"
+      />
       {!plan && !pending && (
-        <p className="pointer-events-none absolute top-4 left-1/2 z-[1] w-[min(22rem,calc(100%-2rem))] -translate-x-1/2 rounded-lg border border-white/10 bg-slate-950/70 px-3 py-2 text-center text-sm text-slate-300 md:left-[calc(50%+10px)]">
+        <p className="border-border bg-surface/80 text-muted pointer-events-none absolute top-4 right-14 left-3 z-[1] rounded-lg border px-3 py-2 text-center text-sm md:right-auto md:left-1/2 md:w-[min(22rem,calc(100%-2rem))] md:-translate-x-1/2">
           Plan a trip to see weather-ranked truck routes.
         </p>
       )}
       {pending && (
         <p
-          className="pointer-events-none absolute top-4 left-1/2 z-[1] -translate-x-1/2 rounded-lg bg-slate-950/70 px-3 py-2 text-sm text-slate-300"
+          className="bg-surface/80 text-muted pointer-events-none absolute top-4 right-14 left-3 z-[1] rounded-lg px-3 py-2 text-center text-sm md:right-auto md:left-1/2 md:w-auto md:-translate-x-1/2"
           aria-live="polite"
         >
           Drawing routes…

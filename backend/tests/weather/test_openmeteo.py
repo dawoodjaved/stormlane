@@ -9,6 +9,7 @@ import respx
 from stormlane.http import UpstreamError
 from stormlane.weather.openmeteo import (
     GEOCODE_URL,
+    NOMINATIM_REVERSE_URL,
     HourlySeries,
     OpenMeteoClient,
     grid_key,
@@ -170,6 +171,48 @@ async def test_geocode_uses_cache(client: OpenMeteoClient) -> None:
 
     assert first == second == [("Dallas", 32.78, -96.8)]
     assert call.call_count == 1
+
+
+@respx.mock
+async def test_reverse_parses_named_place(client: OpenMeteoClient) -> None:
+    call = respx.get(NOMINATIM_REVERSE_URL).respond(
+        json={
+            "name": "Chicago",
+            "address": {
+                "city": "Chicago",
+                "state": "Illinois",
+                "country": "United States",
+                "country_code": "us",
+            },
+        }
+    )
+
+    name = await client.reverse(41.8781, -87.6298)
+
+    assert name == "Chicago, Illinois, United States"
+    params = call.calls.last.request.url.params
+    assert params["lat"] == "41.87810"
+    assert params["lon"] == "-87.62980"
+
+
+@respx.mock
+async def test_reverse_uses_cache(client: OpenMeteoClient) -> None:
+    call = respx.get(NOMINATIM_REVERSE_URL).respond(
+        json={"name": "Dallas", "address": {"city": "Dallas", "country_code": "us"}}
+    )
+
+    first = await client.reverse(32.7767, -96.7970)
+    second = await client.reverse(32.7767, -96.7970)
+
+    assert first == second == "Dallas"
+    assert call.call_count == 1
+
+
+@respx.mock
+async def test_reverse_empty_when_lookup_fails(client: OpenMeteoClient) -> None:
+    respx.get(NOMINATIM_REVERSE_URL).respond(500)
+
+    assert await client.reverse(41.8781, -87.6298) == ""
 
 
 @respx.mock
