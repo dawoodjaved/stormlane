@@ -3,6 +3,11 @@ import { useEffect } from 'react'
 import { prefersReducedMotion } from '../../lib/format.ts'
 import { useMapStore } from './store.ts'
 
+export function nextForecastHour(hour: number, max: number): { hour: number; playing: boolean } {
+  if (hour >= max) return { hour, playing: false }
+  return { hour: hour + 1, playing: true }
+}
+
 export function useForecastPlayback(hours: number) {
   const hour = useMapStore((state) => state.hour)
   const playing = useMapStore((state) => state.playing)
@@ -29,12 +34,12 @@ export function useForecastPlayback(hours: number) {
         return
       }
       last = now
-      const current = useMapStore.getState().hour
-      if (current >= max) {
+      const step = nextForecastHour(useMapStore.getState().hour, max)
+      setHour(step.hour)
+      if (!step.playing) {
         setPlaying(false)
         return
       }
-      setHour(current + 1)
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)

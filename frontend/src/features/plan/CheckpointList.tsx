@@ -1,25 +1,24 @@
-import type { PlannedRoute, RiskLevel } from '../../lib/api.ts'
-import { formatClock } from '../../lib/format.ts'
+import type { ReactNode } from 'react'
 
-const LEVEL_DOT: Record<RiskLevel, string> = {
-  0: 'bg-risk-low',
-  1: 'bg-risk-moderate',
-  2: 'bg-risk-high',
-  3: 'bg-risk-severe',
-  4: 'bg-risk-no-travel',
-}
+import type { PlannedRoute } from '../../lib/api.ts'
+import { formatClock } from '../../lib/format.ts'
+import { RISK_DOT } from '../../lib/risk.ts'
 
 interface Props {
   route: PlannedRoute
   focusedIndex: number | null
   onFocus: (index: number) => void
+  action?: ReactNode
 }
 
-export function CheckpointList({ route, focusedIndex, onFocus }: Props) {
+export function CheckpointList({ route, focusedIndex, onFocus, action }: Props) {
   return (
     <section aria-label={`${route.name} checkpoints`} className="space-y-2">
-      <h2 className="text-xs font-medium tracking-wide text-slate-400 uppercase">Checkpoints</h2>
-      <ul className="max-h-56 space-y-1 overflow-y-auto pr-1">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-muted text-xs font-medium tracking-wide uppercase">Checkpoints</h2>
+        {action}
+      </div>
+      <ul className="max-h-48 space-y-1 overflow-y-auto overscroll-contain pr-1 sm:max-h-56">
         {route.checkpoints.map((checkpoint, index) => {
           const focused = focusedIndex === index
           return (
@@ -30,20 +29,20 @@ export function CheckpointList({ route, focusedIndex, onFocus }: Props) {
                 onClick={() => {
                   onFocus(index)
                 }}
-                className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-400 ${
-                  focused ? 'bg-white/10' : 'hover:bg-white/5'
+                className={`focus-visible:outline-accent flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  focused ? 'bg-hover' : 'hover:bg-hover'
                 }`}
               >
                 <span
-                  className={`mt-1 size-2 shrink-0 rounded-full ${LEVEL_DOT[checkpoint.level]}`}
+                  className={`mt-1 size-2 shrink-0 rounded-full ${RISK_DOT[checkpoint.level]}`}
                   aria-hidden="true"
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="flex justify-between gap-2 text-slate-200">
+                  <span className="text-ink flex justify-between gap-2">
                     <span>{checkpoint.level_label}</span>
-                    <span className="text-slate-400">{formatClock(checkpoint.eta)}</span>
+                    <span className="text-muted shrink-0">{formatClock(checkpoint.eta)}</span>
                   </span>
-                  <span className="block truncate text-slate-400">{checkpoint.factor}</span>
+                  <span className="text-muted block truncate">{checkpoint.factor}</span>
                 </span>
               </button>
             </li>

@@ -4,7 +4,7 @@ import { riskHex } from './risk.ts'
 
 export interface LineFeature {
   type: 'Feature'
-  properties: { id: string; recommended: boolean; selected: boolean }
+  properties: { id: string; level: number; recommended: boolean; selected: boolean }
   geometry: { type: 'LineString'; coordinates: LngLat[] }
 }
 
@@ -14,8 +14,14 @@ export interface PointFeature {
   geometry: { type: 'Point'; coordinates: LngLat }
 }
 
+const decoded = new WeakMap<PlannedRoute, LngLat[]>()
+
 export function routeCoordinates(route: PlannedRoute): LngLat[] {
-  return decodePolyline(route.polyline)
+  const cached = decoded.get(route)
+  if (cached) return cached
+  const points = decodePolyline(route.polyline)
+  decoded.set(route, points)
+  return points
 }
 
 export function routeCollection(
@@ -29,6 +35,7 @@ export function routeCollection(
       type: 'Feature',
       properties: {
         id: route.id,
+        level: route.summary.max_level,
         recommended: route.id === recommendedId,
         selected: route.id === selectedId,
       },
@@ -43,8 +50,9 @@ export function gradientStops(route: PlannedRoute): (number | string)[] {
   let last = -1
 
   for (const checkpoint of route.checkpoints) {
-    const progress = clamp(checkpoint.distance_m / total, 0, 1)
-    if (progress - last < 1e-4) continue
+    let progress = clamp(checkpoint.distance_m / total, 0, 1)
+    if (progress <= last) progress = Math.min(1, last + 1e-4)
+    if (progress - last < 1e-6) continue
     stops.push(progress, riskHex(checkpoint.level))
     last = progress
   }

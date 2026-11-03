@@ -4,10 +4,8 @@ import type { PlanRequest } from '../../lib/api.ts'
 import { fromPounds, toDateTimeLocal, toPounds, type WeightUnit } from '../../lib/format.ts'
 import { PlaceInput } from './PlaceInput.tsx'
 import { SegmentedControl } from './SegmentedControl.tsx'
-import { toRequest } from './request.ts'
-import { useTripStore, type Interval } from './store.ts'
-
-const HORIZON_MS = 48 * 60 * 60 * 1000
+import { HORIZON_MS, toRequest } from './request.ts'
+import { useTripStore, type Interval, type TripForm as TripFields } from './store.ts'
 
 const INTERVALS = [
   { value: 10, label: '10 mi' },
@@ -44,36 +42,58 @@ export function TripForm({ pending, onSubmit }: Props) {
     onSubmit(result)
   }
 
+  function change(updates: Partial<TripFields>) {
+    setError(null)
+    form.update(updates)
+  }
+
   function changeUnit(unit: WeightUnit) {
     const value = Number(form.load)
     const load =
       form.load === '' || Number.isNaN(value)
         ? form.load
         : String(Math.round(fromPounds(toPounds(value, form.loadUnit), unit)))
+    setError(null)
     form.update({ loadUnit: unit, load })
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} noValidate className="flex min-w-0 flex-col gap-4">
       <PlaceInput
+        key={`from-${String(form.formKey)}`}
         label="From"
         placeholder="City or address"
         value={form.origin}
         onChange={(origin) => {
-          form.update({ origin })
+          change({ origin })
         }}
       />
+      <div className="-my-1 flex justify-end">
+        <button
+          type="button"
+          aria-label="Swap origin and destination"
+          disabled={!form.origin && !form.destination}
+          onClick={() => {
+            setError(null)
+            form.swap()
+          }}
+          className="focus-visible:outline-accent hover:bg-hover text-muted rounded-md px-2 py-1 text-xs focus-visible:outline-2 disabled:opacity-40"
+        >
+          Swap
+        </button>
+      </div>
       <PlaceInput
+        key={`to-${String(form.formKey)}`}
         label="To"
         placeholder="City or address"
         value={form.destination}
         onChange={(destination) => {
-          form.update({ destination })
+          change({ destination })
         }}
       />
 
       <div>
-        <label htmlFor="departure" className="mb-1.5 block text-sm font-medium text-slate-300">
+        <label htmlFor="departure" className="text-muted mb-1.5 block text-sm font-medium">
           Departure
         </label>
         <input
@@ -83,14 +103,14 @@ export function TripForm({ pending, onSubmit }: Props) {
           min={minDeparture}
           max={maxDeparture}
           onChange={(event) => {
-            form.update({ departure: event.target.value })
+            change({ departure: event.target.value })
           }}
-          className="border-border bg-surface focus:border-accent w-full rounded-lg border px-3 py-2 text-sm text-slate-100 [color-scheme:dark] focus:outline-none"
+          className="field"
         />
       </div>
 
       <div>
-        <label htmlFor="load" className="mb-1.5 block text-sm font-medium text-slate-300">
+        <label htmlFor="load" className="text-muted mb-1.5 block text-sm font-medium">
           Load weight
         </label>
         <div className="flex gap-2">
@@ -102,11 +122,11 @@ export function TripForm({ pending, onSubmit }: Props) {
             step={100}
             value={form.load}
             onChange={(event) => {
-              form.update({ load: event.target.value })
+              change({ load: event.target.value })
             }}
-            className="border-border bg-surface focus:border-accent w-full min-w-0 rounded-lg border px-3 py-2 text-sm text-slate-100 focus:outline-none"
+            className="field min-w-0"
           />
-          <div className="w-28 shrink-0">
+          <div className="w-24 shrink-0 sm:w-28">
             <SegmentedControl
               label="Weight unit"
               hideLabel
@@ -123,16 +143,16 @@ export function TripForm({ pending, onSubmit }: Props) {
         options={INTERVALS}
         value={form.interval}
         onChange={(interval) => {
-          form.update({ interval })
+          change({ interval })
         }}
       />
 
-      <label className="flex items-center gap-2.5 text-sm text-slate-300">
+      <label className="text-muted flex items-center gap-2.5 text-sm">
         <input
           type="checkbox"
           checked={form.gustAware}
           onChange={(event) => {
-            form.update({ gustAware: event.target.checked })
+            change({ gustAware: event.target.checked })
           }}
           className="accent-accent size-4"
         />
@@ -148,6 +168,7 @@ export function TripForm({ pending, onSubmit }: Props) {
       <button
         type="submit"
         disabled={pending}
+        aria-busy={pending}
         className="bg-accent text-surface focus-visible:outline-accent rounded-lg px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
       >
         {pending ? 'Planning…' : 'Plan route'}

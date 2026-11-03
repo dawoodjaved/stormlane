@@ -3,7 +3,7 @@ import { toPounds } from '../../lib/format.ts'
 import type { TripForm } from './store.ts'
 
 const MAX_LOAD_LB = 200_000
-const HORIZON_MS = 48 * 60 * 60 * 1000
+export const HORIZON_MS = 48 * 60 * 60 * 1000
 
 export function toRequest(form: TripForm, now: Date = new Date()): PlanRequest | string {
   if (!form.origin) return 'Choose a starting point from the suggestions.'
@@ -23,8 +23,8 @@ export function toRequest(form: TripForm, now: Date = new Date()): PlanRequest |
   }
 
   return {
-    origin: { lat: form.origin.lat, lon: form.origin.lon },
-    destination: { lat: form.destination.lat, lon: form.destination.lon },
+    origin: form.origin,
+    destination: form.destination,
     departure: new Date(Math.max(departure.getTime(), now.getTime())).toISOString(),
     load_lb: Math.round(loadLb),
     interval_miles: form.interval,

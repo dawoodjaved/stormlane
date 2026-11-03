@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from string import ascii_uppercase
@@ -33,6 +34,7 @@ from stormlane.weather.openmeteo import OpenMeteoClient, grid_key, sample_weathe
 HORIZON_HOURS = 48
 PLAN_TTL_S = 30 * 60
 CORRIDOR_SAMPLE_M = 1_000.0
+_COORD_NAME = re.compile(r"^-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$")
 
 
 class PlanNotFoundError(Exception):
@@ -47,6 +49,8 @@ class TripRequest:
     load_lb: float
     interval_miles: int
     gust_aware: bool
+    origin_name: str = ""
+    destination_name: str = ""
 
 
 async def plan_trip(
@@ -77,6 +81,24 @@ async def plan_trip(
 
     recommendation = rank(risks)
     plan_id = uuid4().hex
+    origin = await _resolved_place(weather, trip.origin, trip.origin_name)
+    destination = await _resolved_place(weather, trip.destination, trip.destination_name)
+    body = {
+        "plan_id": plan_id,
+        "departure": trip.departure.isoformat(),
+        "load_lb": trip.load_lb,
+        "interval_miles": trip.interval_miles,
+        "gust_aware": trip.gust_aware,
+        "origin": origin,
+        "destination": destination,
+        "recommendation": {
+            "route_id": _route_id(recommendation.recommended),
+            "order": [_route_id(name) for name in recommendation.order],
+            "no_safe_route": recommendation.no_safe_route,
+            "reason": recommendation.reason,
+        },
+        "routes": payloads,
+    }
     await cache.aset(
         _plan_key(plan_id),
         {
@@ -88,24 +110,40 @@ async def plan_trip(
                 {"lat": c.lat.round(4).tolist(), "lon": c.lon.round(4).tolist()}
                 for c in (sample_checkpoints(p, CORRIDOR_SAMPLE_M) for p in profiles)
             ],
+            "payload": body,
         },
         PLAN_TTL_S,
     )
+    return body
 
-    return {
-        "plan_id": plan_id,
-        "departure": trip.departure.isoformat(),
-        "load_lb": trip.load_lb,
-        "interval_miles": trip.interval_miles,
-        "gust_aware": trip.gust_aware,
-        "recommendation": {
-            "route_id": _route_id(recommendation.recommended),
-            "order": [_route_id(name) for name in recommendation.order],
-            "no_safe_route": recommendation.no_safe_route,
-            "reason": recommendation.reason,
-        },
-        "routes": payloads,
-    }
+
+async def load_plan(plan_id: str, weather: OpenMeteoClient | None = None) -> dict[str, Any]:
+    plan = await cache.aget(_plan_key(plan_id))
+    if not plan or "payload" not in plan:
+        raise PlanNotFoundError(plan_id)
+    payload = _with_places(plan["payload"])
+    if weather is None:
+        return payload
+    origin = payload.get("origin")
+    destination = payload.get("destination")
+    if not isinstance(origin, dict) or not isinstance(destination, dict):
+        return payload
+    resolved_origin = await _resolved_place(
+        weather, (float(origin["lat"]), float(origin["lon"])), str(origin.get("name") or "")
+    )
+    resolved_destination = await _resolved_place(
+        weather,
+        (float(destination["lat"]), float(destination["lon"])),
+        str(destination.get("name") or ""),
+    )
+    origin_name = resolved_origin["name"]
+    destination_name = resolved_destination["name"]
+    if origin_name == origin.get("name") and destination_name == destination.get("name"):
+        return payload
+    updated = {**payload, "origin": resolved_origin, "destination": resolved_destination}
+    plan["payload"] = updated
+    await cache.aset(_plan_key(plan_id), plan, PLAN_TTL_S)
+    return updated
 
 
 async def corridor_heatmap(
@@ -207,3 +245,45 @@ def _route_id(name: str) -> str:
 
 def _plan_key(plan_id: str) -> str:
     return f"plan:{plan_id}"
+
+
+def _named_place(point: LatLon, name: str) -> dict[str, Any]:
+    lat, lon = point
+    label = name.strip() or f"{lat:.4f}, {lon:.4f}"
+    return {"name": label, "lat": lat, "lon": lon}
+
+
+def _needs_name(name: str) -> bool:
+    label = name.strip()
+    return not label or bool(_COORD_NAME.match(label))
+
+
+async def _resolved_place(weather: OpenMeteoClient, point: LatLon, name: str) -> dict[str, Any]:
+    label = name.strip()
+    if _needs_name(label):
+        looked_up = await weather.reverse(point[0], point[1])
+        if looked_up:
+            label = looked_up
+    return _named_place(point, label)
+
+
+def _with_places(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("origin") and payload.get("destination"):
+        return payload
+    extras = _places_from_routes(payload)
+    return {**payload, **extras} if extras else payload
+
+
+def _places_from_routes(payload: dict[str, Any]) -> dict[str, Any]:
+    routes = payload.get("routes") or []
+    if not routes:
+        return {}
+    checkpoints = routes[0].get("checkpoints") or []
+    if not checkpoints:
+        return {}
+    start = checkpoints[0]
+    end = checkpoints[-1]
+    return {
+        "origin": _named_place((start["lat"], start["lon"]), ""),
+        "destination": _named_place((end["lat"], end["lon"]), ""),
+    }

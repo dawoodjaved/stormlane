@@ -15,7 +15,13 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from stormlane.api import serializers as s
-from stormlane.api.planning import PlanNotFoundError, TripRequest, corridor_heatmap, plan_trip
+from stormlane.api.planning import (
+    PlanNotFoundError,
+    TripRequest,
+    corridor_heatmap,
+    load_plan,
+    plan_trip,
+)
 from stormlane.http import UpstreamError, new_client
 from stormlane.routing.types import NoRouteError
 from stormlane.routing.valhalla import ValhallaClient
@@ -45,6 +51,22 @@ class PlanView(APIView):
     throttle_classes = (ScopedRateThrottle,)
     throttle_scope = "plan"
 
+    @extend_schema(
+        parameters=[OpenApiParameter("plan_id", str, required=True)],
+        responses=s.PlanResponseSerializer,
+    )
+    def get(self, request: Request) -> Response:
+        query = s.HeatmapQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        plan_id = query.validated_data["plan_id"]
+
+        async def run() -> dict[str, Any]:
+            async with new_client() as http:
+                weather = OpenMeteoClient(http, settings.OPEN_METEO_BASE_URL)
+                return await load_plan(plan_id, weather)
+
+        return Response(_call(run))
+
     @extend_schema(request=s.PlanRequestSerializer, responses=s.PlanResponseSerializer)
     def post(self, request: Request) -> Response:
         serializer = s.PlanRequestSerializer(data=request.data)
@@ -57,6 +79,8 @@ class PlanView(APIView):
             load_lb=data["load_lb"],
             interval_miles=int(data["interval_miles"]),
             gust_aware=data["gust_aware"],
+            origin_name=str(data["origin"].get("name") or ""),
+            destination_name=str(data["destination"].get("name") or ""),
         )
 
         async def run() -> dict[str, Any]:

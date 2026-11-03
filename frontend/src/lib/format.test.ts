@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDuration, formatMiles, fromPounds, toDateTimeLocal, toPounds } from './format.ts'
+import {
+  formatDuration,
+  formatForecastHour,
+  formatMiles,
+  fromPounds,
+  toDateTimeLocal,
+  toPounds,
+} from './format.ts'
 
 describe('weight conversion', () => {
   it('converts kilograms to pounds and back', () => {
@@ -31,6 +38,14 @@ describe('formatDuration', () => {
 
   it('formats hours and minutes', () => {
     expect(formatDuration(3 * 3600 + 5 * 60)).toBe('3 h 05 min')
+  })
+})
+
+describe('formatForecastHour', () => {
+  it('adds hours onto the forecast start', () => {
+    const label = formatForecastHour('2026-11-03T10:00:00Z', 2)
+    expect(label).toMatch(/\d/)
+    expect(label).toBe(formatForecastHour('2026-11-03T12:00:00Z', 0))
   })
 })
 

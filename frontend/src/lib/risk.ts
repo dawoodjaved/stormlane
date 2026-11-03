@@ -16,6 +16,16 @@ export const RISK_LABEL: Record<RiskLevel, string> = {
   4: 'No Travel',
 }
 
+export const RISK_DOT: Record<RiskLevel, string> = {
+  0: 'bg-risk-low',
+  1: 'bg-risk-moderate',
+  2: 'bg-risk-high',
+  3: 'bg-risk-severe',
+  4: 'bg-risk-no-travel',
+}
+
+export const RISK_LEVELS: RiskLevel[] = [0, 1, 2, 3, 4]
+
 export function riskHex(level: number): string {
   if (level <= 0) return RISK_HEX[0]
   if (level >= 4) return RISK_HEX[4]

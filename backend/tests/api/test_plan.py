@@ -2,14 +2,16 @@ from collections.abc import Iterator
 from datetime import timedelta
 from typing import Any
 
+import httpx
 import pytest
 import respx
+from django.core.cache import cache
 from django.test import Client
 from django.utils import timezone
 
 from stormlane.core.polyline import decode
 from stormlane.routing.valhalla import ROUTES_URL
-from stormlane.weather.openmeteo import GEOCODE_URL
+from stormlane.weather.openmeteo import GEOCODE_URL, NOMINATIM_REVERSE_URL
 from tests.fakes import (
     open_meteo_responder,
     straight_line,
@@ -43,18 +45,39 @@ def routes_payload() -> dict[str, Any]:
     )
 
 
+def reverse_place(request: httpx.Request) -> httpx.Response:
+    lat = float(request.url.params["lat"])
+    if lat >= 40.5:
+        city, state = "Chicago", "Illinois"
+    else:
+        city, state = "Indianapolis", "Indiana"
+    return httpx.Response(
+        200,
+        json={
+            "name": city,
+            "address": {
+                "city": city,
+                "state": state,
+                "country": "United States",
+                "country_code": "us",
+            },
+        },
+    )
+
+
 @pytest.fixture
 def upstream() -> Iterator[respx.MockRouter]:
     with respx.mock(assert_all_called=False) as router:
         router.get(ROUTES_URL).respond(json=routes_payload())
         router.get(OPEN_METEO_URL).mock(side_effect=open_meteo_responder(stormy_west_of(-87.8)))
+        router.get(NOMINATIM_REVERSE_URL).mock(side_effect=reverse_place)
         yield router
 
 
 def trip(**overrides: Any) -> dict[str, Any]:
     body = {
-        "origin": CHICAGO,
-        "destination": INDIANAPOLIS,
+        "origin": {**CHICAGO, "name": "Chicago, Illinois, United States"},
+        "destination": {**INDIANAPOLIS, "name": "Indianapolis, Indiana, United States"},
         "departure": (timezone.now() + timedelta(hours=1)).isoformat(),
         "load_lb": 36_000,
         "interval_miles": 10,
@@ -103,6 +126,65 @@ def test_defaults(client: Client, upstream: respx.MockRouter) -> None:
     assert response.status_code == 200
     assert response.json()["interval_miles"] == 25
     assert response.json()["gust_aware"] is True
+
+
+def test_get_plan(client: Client, upstream: respx.MockRouter) -> None:
+    created = post_plan(client, trip()).json()
+
+    response = client.get("/api/plan", {"plan_id": created["plan_id"]})
+
+    assert response.status_code == 200
+    assert response.json() == created
+    assert created["origin"]["name"] == "Chicago, Illinois, United States"
+    assert created["destination"]["name"] == "Indianapolis, Indiana, United States"
+
+
+def test_plan_names_places_when_labels_missing(client: Client, upstream: respx.MockRouter) -> None:
+    body = trip(origin=dict(CHICAGO), destination=dict(INDIANAPOLIS))
+
+    response = post_plan(client, body)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["origin"]["name"] == "Chicago, Illinois, United States"
+    assert payload["destination"]["name"] == "Indianapolis, Indiana, United States"
+
+
+def test_get_plan_resolves_coordinate_labels(client: Client, upstream: respx.MockRouter) -> None:
+    created = post_plan(client, trip()).json()
+    plan_id = created["plan_id"]
+    stored = cache.get(f"plan:{plan_id}")
+    assert stored is not None
+    stored["payload"]["origin"] = {**CHICAGO, "name": "41.8781, -87.6298"}
+    stored["payload"]["destination"] = {**INDIANAPOLIS, "name": "39.7684, -86.1581"}
+    cache.set(f"plan:{plan_id}", stored)
+
+    response = client.get("/api/plan", {"plan_id": plan_id})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["origin"]["name"] == "Chicago, Illinois, United States"
+    assert body["destination"]["name"] == "Indianapolis, Indiana, United States"
+
+
+def test_get_plan_survives_heatmap(client: Client, upstream: respx.MockRouter) -> None:
+    created = post_plan(client, trip()).json()
+    assert client.get("/api/heatmap", {"plan_id": created["plan_id"]}).status_code == 200
+
+    response = client.get("/api/plan", {"plan_id": created["plan_id"]})
+
+    assert response.status_code == 200
+    assert response.json() == created
+
+
+def test_get_unknown_plan(client: Client) -> None:
+    response = client.get("/api/plan", {"plan_id": "0" * 32})
+
+    assert response.status_code == 404
+
+
+def test_get_plan_rejects_malformed_plan_id(client: Client) -> None:
+    assert client.get("/api/plan", {"plan_id": "nope"}).status_code == 400
 
 
 def test_heatmap_for_a_plan(client: Client, upstream: respx.MockRouter) -> None:

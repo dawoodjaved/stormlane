@@ -20,8 +20,8 @@ describe('toRequest', () => {
     const request = toRequest(valid, NOW)
 
     expect(request).toEqual({
-      origin: { lat: 41.88, lon: -87.63 },
-      destination: { lat: 39.77, lon: -86.16 },
+      origin: { name: 'Chicago', lat: 41.88, lon: -87.63 },
+      destination: { name: 'Indianapolis', lat: 39.77, lon: -86.16 },
       departure: new Date('2026-11-03T12:00').toISOString(),
       load_lb: 36_000,
       interval_miles: 25,
