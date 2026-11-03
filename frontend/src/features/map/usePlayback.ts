@@ -3,10 +3,7 @@ import { useEffect } from 'react'
 import { prefersReducedMotion } from '../../lib/format.ts'
 import { useMapStore } from './store.ts'
 
-export function nextForecastHour(
-  hour: number,
-  max: number,
-): { hour: number; playing: boolean } {
+export function nextForecastHour(hour: number, max: number): { hour: number; playing: boolean } {
   if (hour >= max) return { hour, playing: false }
   return { hour: hour + 1, playing: true }
 }
