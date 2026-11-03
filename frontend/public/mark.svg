@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Weighcast mark">
+  <rect width="64" height="64" fill="#141210"/>
+  <rect x="0" y="0" width="6" height="64" fill="#f0a202"/>
+  <path d="M14 42h23l5.5-9H50v16H14z" fill="#ebe6dc"/>
+  <circle cx="22" cy="50" r="3.5" fill="#141210"/>
+  <circle cx="41" cy="50" r="3.5" fill="#141210"/>
+  <path d="M32 10v8M22 28h20M22 28l10-10 10 10" fill="none" stroke="#f0a202" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="22" cy="30" r="2.6" fill="#f0a202"/>
+  <circle cx="42" cy="30" r="2.6" fill="#f0a202"/>
+</svg>

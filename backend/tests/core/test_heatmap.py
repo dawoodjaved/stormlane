@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from stormlane.core.geometry import FloatArray, Span, build_profile, sample_checkpoints
-from stormlane.core.heatmap import CORRIDOR_RADIUS_M, MIN_CELL_M, corridor_grid
+from weighcast.core.geometry import FloatArray, Span, build_profile, sample_checkpoints
+from weighcast.core.heatmap import CORRIDOR_RADIUS_M, MIN_CELL_M, corridor_grid
 
 from .test_geometry import haversine_m
 

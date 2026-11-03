@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from stormlane.core.geometry import EARTH_RADIUS_M, METERS_PER_MILE, FloatArray, segment_lengths
+from weighcast.core.geometry import EARTH_RADIUS_M, METERS_PER_MILE, FloatArray, segment_lengths
 
 METERS_PER_DEGREE = EARTH_RADIUS_M * math.pi / 180
 CORRIDOR_RADIUS_M = 25 * METERS_PER_MILE

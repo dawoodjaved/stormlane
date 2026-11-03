@@ -11,6 +11,9 @@ export interface Place extends LatLon {
   name: string
 }
 
+export type WeatherMode = 'live' | 'storm' | 'calm'
+export type HeatmapLayer = 'risk' | 'wind' | 'rain' | 'snow'
+
 export interface PlanRequest {
   origin: Place
   destination: Place
@@ -18,6 +21,7 @@ export interface PlanRequest {
   load_lb: number
   interval_miles: 10 | 25 | 50
   gust_aware: boolean
+  weather_mode?: WeatherMode
 }
 
 export interface Checkpoint extends LatLon {
@@ -45,6 +49,7 @@ export interface RouteSummary {
 export interface PlannedRoute {
   id: string
   name: string
+  via?: string
   polyline: string
   distance_m: number
   duration_s: number
@@ -61,6 +66,7 @@ export interface Plan {
   load_lb: number
   interval_miles: number
   gust_aware: boolean
+  weather_mode?: WeatherMode
   origin?: Place
   destination?: Place
   recommendation: {
@@ -77,7 +83,12 @@ export interface Heatmap {
   start: string
   hours: number
   cell_size_m: number
-  cells: (LatLon & { risk: RiskLevel[] })[]
+  cells: (LatLon & {
+    risk: RiskLevel[]
+    wind?: RiskLevel[]
+    rain?: RiskLevel[]
+    snow?: RiskLevel[]
+  })[]
 }
 
 export class ApiError extends Error {

@@ -35,10 +35,10 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "drf_spectacular",
-    "stormlane.core",
-    "stormlane.routing",
-    "stormlane.weather",
-    "stormlane.api",
+    "weighcast.core",
+    "weighcast.routing",
+    "weighcast.weather",
+    "weighcast.api",
 ]
 
 MIDDLEWARE = [
@@ -49,8 +49,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "stormlane.urls"
-ASGI_APPLICATION = "stormlane.asgi.application"
+ROOT_URLCONF = "weighcast.urls"
+ASGI_APPLICATION = "weighcast.asgi.application"
 
 TEMPLATES: list[dict[str, Any]] = [
     {
@@ -77,7 +77,7 @@ CACHES: dict[str, dict[str, Any]] = {
         if REDIS_URL
         else {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "stormlane",
+            "LOCATION": "weighcast",
             "TIMEOUT": 30 * 60,
             "OPTIONS": {"MAX_ENTRIES": 20_000},
         }
@@ -109,8 +109,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Stormlane API",
-    "DESCRIPTION": "Weather-aware truck routing",
+    "TITLE": "Weighcast API",
+    "DESCRIPTION": "Weather-ranked truck routing",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }

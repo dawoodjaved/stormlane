@@ -9,9 +9,9 @@ import httpx
 import numpy as np
 from django.core.cache import cache
 
-from stormlane.core.geometry import FloatArray
-from stormlane.core.risk import Weather
-from stormlane.http import UpstreamError, get_with_retry
+from weighcast.core.geometry import FloatArray
+from weighcast.core.risk import Weather
+from weighcast.http import UpstreamError, get_with_retry
 
 HOURLY_VARIABLES = ("wind_speed_10m", "wind_gusts_10m", "rain", "showers", "snowfall")
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"

@@ -1,8 +1,9 @@
-# Stormlane
+# Weighcast
 
-Weather-aware truck routing. Stormlane gets truck routes from Valhalla (OpenStreetMap), checks the
-Open-Meteo forecast at points along each route based on when the truck will reach them, scores
-wind, rain and snow risk against the truck's load, and recommends the safest route.
+Dispatch desk for weather-ranked truck runs. Weighcast pulls Valhalla (OpenStreetMap) truck routes,
+samples Open-Meteo at each checkpoint ETA, scores wind / rain / snow against load (gust-aware),
+and ranks the safest corridor. Share a plan link, see when leaving later helps, and jump to the
+worst stretch on the map.
 
 ## Stack
 
@@ -25,11 +26,18 @@ each alternative with a risk gradient and overlays a 0–48 hour corridor heatma
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RISK_RULES.md](docs/RISK_RULES.md).
 A short recording outline lives in [docs/LOOM.md](docs/LOOM.md).
 
+## What makes Weighcast different
+
+Not StormLane (TomTom + 3D brochure) and not Haulcast (same weather-route brief under another
+name). Weighcast sells the **load**: gust-aware scoring against weight, Hold the gate leave-later
+hints, shareable `?p=` plans that restore city names, worst-stretch jump, and a corridor heatmap —
+asphalt/amber dispatch desk, not a navy weather portfolio.
+
 ## Project structure
 
 ```
 backend/
-  stormlane/
+  weighcast/
     core/       geometry, polyline, risk, heatmap
     routing/    Valhalla client
     weather/    Open-Meteo client
@@ -37,8 +45,10 @@ backend/
   tests/
 frontend/
   src/
+    pages/          landing + dispatch desk (/app)
     features/map    MapLibre layers, slider, legend
     features/plan   form, results, queries
+  public/           favicon, logo, mark
 docs/
 ```
 
@@ -65,7 +75,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt
-uvicorn stormlane.asgi:application --reload --port 8000
+uvicorn weighcast.asgi:application --reload --port 8000
 ```
 
 Frontend:
@@ -77,8 +87,9 @@ npm install
 npm run dev
 ```
 
-The app runs at http://localhost:5173 and the API at http://localhost:8000. In development, Vite
-proxies `/api` to the backend. OpenAPI is at http://localhost:8000/api/docs.
+Landing is http://localhost:5173, the desk is http://localhost:5173/app, and the API is
+http://localhost:8000. In development, Vite proxies `/api` to the backend. OpenAPI is at
+http://localhost:8000/api/docs.
 
 ## Checks
 
@@ -129,7 +140,7 @@ No third-party API keys are required.
 1. Create the Blueprint from this repo.
 2. Set `DJANGO_ALLOWED_HOSTS` to the Render hostname (and a custom domain if you add one).
 3. After Vercel is live, set `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` to the Vercel origin,
-   for example `https://stormlane.vercel.app`.
+   for example `https://weighcast.vercel.app`.
 4. `DJANGO_SECRET_KEY` is generated. Leave `DJANGO_DEBUG=false`.
 5. Health check: `GET /api/health`.
 
@@ -140,7 +151,7 @@ The image runs `gunicorn` with `UvicornWorker`, two workers, 60s timeout, bound 
 1. New project, **Root Directory** `frontend`.
 2. Framework preset Vite (`frontend/vercel.json`).
 3. Set `VITE_API_URL` to the Render origin, no trailing slash, for example
-   `https://stormlane-api.onrender.com`.
+   `https://weighcast-api.onrender.com`.
 4. Redeploy after changing the env var so it is baked into the bundle.
 
 ### Secrets

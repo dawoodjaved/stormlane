@@ -14,6 +14,7 @@ describe('PlanResult', () => {
       hour: 0,
       playing: false,
       fitNonce: 0,
+      heatmapLayer: 'risk',
     })
   })
 
@@ -28,7 +29,7 @@ describe('PlanResult', () => {
       />,
     )
 
-    expect(screen.getByText(/Pick an origin, destination, and departure/)).toBeInTheDocument()
+    expect(screen.getByText(/Set origin, destination, and departure/)).toBeInTheDocument()
   })
 
   it('shows a planning skeleton', () => {
@@ -42,7 +43,7 @@ describe('PlanResult', () => {
       />,
     )
 
-    expect(screen.getByText('Checking routes and forecasts…')).toBeInTheDocument()
+    expect(screen.getByText('Pulling truck routes and corridor weather…')).toBeInTheDocument()
   })
 
   it('shows a planning error', () => {
@@ -73,7 +74,7 @@ describe('PlanResult', () => {
     )
 
     expect(screen.getByText('Lowest weather risk among truck routes.')).toBeInTheDocument()
-    expect(screen.getByText('Best')).toBeInTheDocument()
+    expect(screen.getByText('Pick')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Worst stretch' }))
@@ -85,7 +86,7 @@ describe('PlanResult', () => {
     await user.click(screen.getByRole('button', { name: /Moderate/ }))
     expect(useMapStore.getState().focused).toEqual({ routeId: 'A', index: 1 })
 
-    await user.click(screen.getByRole('button', { name: 'New trip' }))
+    await user.click(screen.getByRole('button', { name: 'New run' }))
     expect(onNewTrip).toHaveBeenCalledOnce()
   })
 
@@ -101,7 +102,7 @@ describe('PlanResult', () => {
       />,
     )
 
-    expect(screen.getByText('Leave later')).toBeInTheDocument()
+    expect(screen.getByText('Hold the gate')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /See .+ on the map/ }))
     expect(useMapStore.getState().hour).toBe(3)
     expect(useMapStore.getState().playing).toBe(false)

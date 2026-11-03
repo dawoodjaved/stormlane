@@ -5,7 +5,7 @@ from typing import Any
 from django.utils import timezone
 from rest_framework import serializers
 
-from stormlane.core.geometry import EARTH_RADIUS_M, METERS_PER_MILE
+from weighcast.core.geometry import EARTH_RADIUS_M, METERS_PER_MILE
 
 INTERVAL_CHOICES = (10, 25, 50)
 MAX_LOAD_LB = 200_000
@@ -28,6 +28,9 @@ class PlanRequestSerializer(serializers.Serializer[dict[str, Any]]):
     load_lb = serializers.FloatField(min_value=0, max_value=MAX_LOAD_LB)
     interval_miles = serializers.ChoiceField(choices=INTERVAL_CHOICES, default=25)
     gust_aware = serializers.BooleanField(default=True)
+    weather_mode = serializers.ChoiceField(
+        choices=("live", "storm", "calm"), required=False, default="live"
+    )
 
     def validate_departure(self, value: Any) -> Any:
         now = timezone.now()
@@ -94,6 +97,7 @@ class RouteSummarySerializer(serializers.Serializer[dict[str, Any]]):
 class RouteSerializer(serializers.Serializer[dict[str, Any]]):
     id = serializers.CharField()
     name = serializers.CharField()
+    via = serializers.CharField(required=False, allow_blank=True)
     polyline = serializers.CharField(help_text="Encoded polyline, precision 6")
     distance_m = serializers.IntegerField()
     duration_s = serializers.IntegerField()
@@ -117,6 +121,7 @@ class PlanResponseSerializer(serializers.Serializer[dict[str, Any]]):
     load_lb = serializers.FloatField()
     interval_miles = serializers.IntegerField()
     gust_aware = serializers.BooleanField()
+    weather_mode = serializers.CharField(required=False)
     origin = PlaceSerializer()
     destination = PlaceSerializer()
     recommendation = RecommendationSerializer()
@@ -127,6 +132,9 @@ class HeatmapCellSerializer(serializers.Serializer[dict[str, Any]]):
     lat = serializers.FloatField()
     lon = serializers.FloatField()
     risk = serializers.ListField(child=serializers.IntegerField(), help_text="Level per hour")
+    wind = serializers.ListField(child=serializers.IntegerField(), required=False)
+    rain = serializers.ListField(child=serializers.IntegerField(), required=False)
+    snow = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
 class HeatmapResponseSerializer(serializers.Serializer[dict[str, Any]]):

@@ -3,16 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/mark.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Weather-aware truck routing with risk-ranked alternatives." />
-    <meta name="theme-color" content="#0b1220" />
-    <title>Stormlane</title>
+    <meta
+      name="description"
+      content="Weighcast scores truck corridors by load, gusts, rain, and snow — then tells you when to hold the gate."
+    />
+    <meta name="theme-color" content="#141210" />
+    <meta property="og:title" content="Weighcast" />
+    <meta
+      property="og:description"
+      content="Load-aware weather ranking for truck dispatch. Weigh the corridor before you roll."
+    />
+    <meta property="og:image" content="/mark.svg" />
+    <title>Weighcast</title>
     <script>
       try {
-        var theme = localStorage.getItem('stormlane-theme')
+        var theme = localStorage.getItem('weighcast-theme')
         document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'
         if (theme === 'light') {
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#eef2f7')
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#d8dde4')
         }
       } catch (e) {}
     </script>

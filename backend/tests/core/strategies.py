@@ -1,7 +1,7 @@
 import numpy as np
 from hypothesis import strategies as st
 
-from stormlane.core.geometry import FloatArray, Span
+from weighcast.core.geometry import FloatArray, Span
 
 RouteInput = tuple[FloatArray, FloatArray, list[Span]]
 

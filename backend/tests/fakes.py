@@ -4,7 +4,7 @@ from typing import Any
 
 import httpx
 
-from stormlane.core.polyline import encode
+from weighcast.core.polyline import encode
 
 Point = tuple[float, float]
 

@@ -6,7 +6,9 @@ import { TimeSlider } from '../map/TimeSlider.tsx'
 import { useMapStore } from '../map/store.ts'
 import { CheckpointList } from './CheckpointList.tsx'
 import { CopyLinkButton } from './CopyLinkButton.tsx'
+import { CorridorChart } from './CorridorChart.tsx'
 import { DelayHint } from './DelayHint.tsx'
+import { DriverBrief } from './DriverBrief.tsx'
 import { RouteSummaryCard } from './RouteSummaryCard.tsx'
 
 interface HeatmapStatus {
@@ -27,10 +29,10 @@ export function PlanResult({ plan, pending, error, heatmap, onNewTrip }: Props) 
   if (pending) {
     return (
       <div className="space-y-3" aria-busy="true" aria-live="polite">
-        <p className="text-muted text-sm">Checking routes and forecasts…</p>
-        <div className="bg-hover h-20 animate-pulse rounded-lg motion-reduce:animate-none" />
-        <div className="bg-hover h-16 animate-pulse rounded-lg motion-reduce:animate-none" />
-        <div className="bg-hover h-16 animate-pulse rounded-lg motion-reduce:animate-none" />
+        <p className="text-muted text-sm">Pulling truck routes and corridor weather…</p>
+        <div className="bg-hover h-20 animate-pulse rounded-sm motion-reduce:animate-none" />
+        <div className="bg-hover h-16 animate-pulse rounded-sm motion-reduce:animate-none" />
+        <div className="bg-hover h-16 animate-pulse rounded-sm motion-reduce:animate-none" />
       </div>
     )
   }
@@ -39,7 +41,7 @@ export function PlanResult({ plan, pending, error, heatmap, onNewTrip }: Props) 
     return (
       <p
         role="alert"
-        className="border-risk-severe/40 text-risk-severe rounded-lg border p-3 text-sm"
+        className="border-risk-severe/40 text-risk-severe rounded-sm border p-3 text-sm"
       >
         {error.message}
       </p>
@@ -49,7 +51,8 @@ export function PlanResult({ plan, pending, error, heatmap, onNewTrip }: Props) 
   if (!plan) {
     return (
       <p className="text-subtle text-sm">
-        Pick an origin, destination, and departure to compare weather along the truck routes.
+        Set origin, destination, and departure. Weighcast ranks each run by No Travel, severe miles,
+        then average risk.
       </p>
     )
   }
@@ -84,13 +87,13 @@ function Results({
   return (
     <section id="results" aria-label="Results" className="space-y-4">
       <div
-        className={`rounded-lg border p-3 ${
-          recommendation.no_safe_route ? 'border-risk-no-travel/60' : 'border-accent/40'
+        className={`rounded-sm border p-3 ${
+          recommendation.no_safe_route ? 'border-risk-no-travel/60' : 'border-accent/50'
         }`}
       >
         <div className="flex items-start justify-between gap-3">
-          <p className="text-muted text-xs font-medium tracking-wide uppercase">
-            {recommendation.no_safe_route ? 'No safe route' : 'Recommended'}
+          <p className="text-accent brand text-xs">
+            {recommendation.no_safe_route ? 'No clear run' : 'Best run'}
           </p>
           <span className="flex shrink-0 items-center gap-3">
             <CopyLinkButton planId={plan.plan_id} />
@@ -99,7 +102,7 @@ function Results({
               onClick={onNewTrip}
               className="focus-visible:outline-accent text-muted hover:text-ink text-xs focus-visible:outline-2"
             >
-              New trip
+              New run
             </button>
           </span>
         </div>
@@ -108,6 +111,8 @@ function Results({
 
       <DelayHint plan={plan} heatmap={heatmap.data} />
 
+      {selected && <DriverBrief plan={plan} route={selected} />}
+
       <ul className="space-y-2">
         {recommendation.order.map((id) => {
           const route = plan.routes.find((item) => item.id === id)
@@ -115,6 +120,7 @@ function Results({
           return (
             <RouteSummaryCard
               key={id}
+              plan={plan}
               route={route}
               recommended={id === recommendation.route_id}
               selected={id === selectedId}
@@ -125,6 +131,8 @@ function Results({
           )
         })}
       </ul>
+
+      {selected && <CorridorChart route={selected} />}
 
       {heatmap.isPending && (
         <p className="text-subtle text-xs" aria-live="polite">

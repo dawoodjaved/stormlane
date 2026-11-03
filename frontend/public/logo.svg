@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 48" fill="none" role="img" aria-label="Weighcast">
+  <rect x="0" y="4" width="6" height="40" fill="#f0a202"/>
+  <path d="M18 32h28l7-12h8v20H18z" fill="#ebe6dc"/>
+  <circle cx="28" cy="40" r="4" fill="#141210"/>
+  <circle cx="50" cy="40" r="4" fill="#141210"/>
+  <path d="M40 8v8M30 26h20M30 26l10-10 10 10" fill="none" stroke="#f0a202" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="30" cy="28" r="2.4" fill="#f0a202"/>
+  <circle cx="50" cy="28" r="2.4" fill="#f0a202"/>
+  <text x="84" y="34" fill="#ebe6dc" font-family="Arial Narrow, Helvetica Neue, sans-serif" font-size="28" font-weight="700" letter-spacing="3">WEIGHCAST</text>
+</svg>

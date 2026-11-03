@@ -19,4 +19,4 @@ USER app
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "gunicorn stormlane.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --timeout 60"]
+CMD ["sh", "-c", "gunicorn weighcast.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers ${WEB_CONCURRENCY:-2} --timeout 60"]
