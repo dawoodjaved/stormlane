@@ -24,14 +24,14 @@ export function SegmentedControl<T extends string | number>({
 
   return (
     <fieldset className="min-w-0">
-      <legend className={hideLabel ? 'sr-only' : 'mb-1.5 text-sm font-medium text-slate-300'}>
+      <legend className={hideLabel ? 'sr-only' : 'text-muted mb-1.5 text-sm font-medium'}>
         {label}
       </legend>
       <div className="border-border bg-surface flex rounded-lg border p-0.5">
         {options.map((option) => (
           <label
             key={String(option.value)}
-            className="has-checked:bg-accent has-checked:text-surface has-focus-visible:outline-accent flex-1 cursor-pointer rounded-md px-3 py-1.5 text-center text-sm text-slate-300 transition-colors has-checked:font-medium has-focus-visible:outline-2"
+            className="has-checked:bg-accent has-checked:text-surface has-focus-visible:outline-accent text-muted flex-1 cursor-pointer rounded-md px-3 py-1.5 text-center text-sm transition-colors has-checked:font-medium has-focus-visible:outline-2"
           >
             <input
               type="radio"

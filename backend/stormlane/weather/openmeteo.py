@@ -15,6 +15,7 @@ from stormlane.http import UpstreamError, get_with_retry
 
 HOURLY_VARIABLES = ("wind_speed_10m", "wind_gusts_10m", "rain", "showers", "snowfall")
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 CHUNK_SIZE = 50
 MAX_CONCURRENT_REQUESTS = 6
 CACHE_TTL_S = 30 * 60
@@ -132,6 +133,34 @@ class OpenMeteoClient:
         await cache.aset(cache_key, places, GEOCODE_CACHE_TTL_S)
         return places
 
+    async def reverse(self, lat: float, lon: float) -> str:
+        cache_key = f"om:reverse:{lat:.4f}:{lon:.4f}"
+        cached = await cache.aget(cache_key)
+        if isinstance(cached, str):
+            return cached
+
+        params = {
+            "lat": f"{lat:.5f}",
+            "lon": f"{lon:.5f}",
+            "format": "json",
+            "addressdetails": "1",
+            "zoom": "10",
+        }
+        try:
+            response = await get_with_retry(
+                self._http, NOMINATIM_REVERSE_URL, params, service="Nominatim"
+            )
+        except UpstreamError:
+            return ""
+        body = response.json()
+        if response.status_code >= 400 or not isinstance(body, dict):
+            return ""
+
+        name = _nominatim_place(body)
+        if name:
+            await cache.aset(cache_key, name, GEOCODE_CACHE_TTL_S)
+        return name
+
     async def _fetch(
         self, keys: Sequence[GridKey], start_hour: datetime, end_hour: datetime
     ) -> list[dict[str, list[float]]]:
@@ -203,3 +232,22 @@ def _geocode_place(row: dict[str, Any]) -> tuple[str, float, float]:
     parts = [row.get("name"), row.get("admin1"), row.get("country")]
     name = ", ".join(part for part in parts if isinstance(part, str) and part)
     return (name, float(row["latitude"]), float(row["longitude"]))
+
+
+def _nominatim_place(body: dict[str, Any]) -> str:
+    address = body.get("address")
+    if not isinstance(address, dict):
+        return ""
+    code = address.get("country_code")
+    if isinstance(code, str) and code.upper() not in GEOCODE_COUNTRIES:
+        return ""
+    city = (
+        address.get("city")
+        or address.get("town")
+        or address.get("village")
+        or address.get("municipality")
+        or address.get("county")
+        or body.get("name")
+    )
+    parts = [city, address.get("state"), address.get("country")]
+    return ", ".join(part for part in parts if isinstance(part, str) and part)

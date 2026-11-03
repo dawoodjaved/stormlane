@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Checkpoint, PlannedRoute, RouteSummary } from './api.ts'
-import { gradientStops, heatmapCollection, positionAtHour, routeBounds } from './routeGeo.ts'
+import {
+  gradientStops,
+  heatmapCollection,
+  heatmapWeight,
+  positionAtHour,
+  routeBounds,
+  routeCoordinates,
+} from './routeGeo.ts'
 
 function checkpoint(
   distance_m: number,
@@ -60,6 +67,13 @@ describe('gradientStops', () => {
     expect(stops[stops.length - 2]).toBe(1)
     expect(stops).toContain('#f97316')
   })
+
+  it('keeps progress strictly increasing', () => {
+    const progress = gradientStops(route).filter((_, index) => index % 2 === 0)
+    for (let i = 1; i < progress.length; i += 1) {
+      expect(progress[i]).toBeGreaterThan(progress[i - 1] as number)
+    }
+  })
 })
 
 describe('positionAtHour', () => {
@@ -79,6 +93,19 @@ describe('positionAtHour', () => {
 describe('routeBounds', () => {
   it('returns null when there is no geometry', () => {
     expect(routeBounds([route])).toBeNull()
+  })
+})
+
+describe('heatmapWeight', () => {
+  it('reads the property for the active hour', () => {
+    expect(heatmapWeight(7)).toEqual(['interpolate', ['linear'], ['get', 'h7'], 0, 0.08, 4, 1])
+  })
+})
+
+describe('routeCoordinates', () => {
+  it('reuses the decoded polyline', () => {
+    const first = routeCoordinates(route)
+    expect(routeCoordinates(route)).toBe(first)
   })
 })
 

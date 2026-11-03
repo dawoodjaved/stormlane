@@ -61,7 +61,7 @@ export function PlaceInput({ label, placeholder, value, onChange }: Props) {
 
   return (
     <div className="relative">
-      <label htmlFor={inputId} className="mb-1.5 block text-sm font-medium text-slate-300">
+      <label htmlFor={inputId} className="text-muted mb-1.5 block text-sm font-medium">
         {label}
       </label>
       <input
@@ -69,6 +69,9 @@ export function PlaceInput({ label, placeholder, value, onChange }: Props) {
         type="text"
         role="combobox"
         autoComplete="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        enterKeyHint="search"
         aria-autocomplete="list"
         aria-expanded={showList}
         aria-controls={listId}
@@ -88,7 +91,7 @@ export function PlaceInput({ label, placeholder, value, onChange }: Props) {
           setOpen(false)
         }}
         onKeyDown={onKeyDown}
-        className="border-border bg-surface focus:border-accent w-full rounded-lg border px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+        className="field"
       />
       {showList && (
         <ul
@@ -97,12 +100,12 @@ export function PlaceInput({ label, placeholder, value, onChange }: Props) {
           aria-label={`${label} suggestions`}
           className="border-border bg-surface-raised absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border py-1 shadow-xl"
         >
-          {waiting && <li className="px-3 py-2 text-sm text-slate-400">Searching…</li>}
+          {waiting && <li className="text-muted px-3 py-2 text-sm">Searching…</li>}
           {!waiting && isError && (
             <li className="text-risk-severe px-3 py-2 text-sm">Search is unavailable.</li>
           )}
           {!waiting && !isError && places.length === 0 && (
-            <li className="px-3 py-2 text-sm text-slate-400">No matches</li>
+            <li className="text-muted px-3 py-2 text-sm">No matches</li>
           )}
           {!waiting &&
             places.map((place, index) => (
@@ -117,7 +120,7 @@ export function PlaceInput({ label, placeholder, value, onChange }: Props) {
                 onClick={() => {
                   select(place)
                 }}
-                className="aria-selected:bg-accent/20 cursor-pointer px-3 py-2 text-sm text-slate-200 hover:bg-white/5"
+                className="aria-selected:bg-accent/20 hover:bg-hover text-ink cursor-pointer px-3 py-2 text-sm"
               >
                 {place.name}
               </li>

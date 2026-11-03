@@ -15,7 +15,7 @@ export function TimeSlider({ start, hours }: Props) {
   const clamped = Math.min(hour, max)
 
   return (
-    <div className="border-border bg-surface-raised/90 flex items-center gap-3 rounded-xl border px-3 py-2 shadow-lg backdrop-blur">
+    <div className="border-border bg-surface-raised/90 flex items-center gap-2 rounded-xl border px-2.5 py-2 shadow-lg backdrop-blur sm:gap-3 sm:px-3">
       <button
         type="button"
         aria-pressed={playing}
@@ -28,12 +28,12 @@ export function TimeSlider({ start, hours }: Props) {
           if (clamped >= max) setHour(0)
           setPlaying(true)
         }}
-        className="focus-visible:outline-accent rounded-md px-2 py-1 text-sm font-medium text-slate-100 hover:bg-white/5 focus-visible:outline-2"
+        className="focus-visible:outline-accent hover:bg-hover text-ink rounded-md px-2 py-1 text-xs font-medium focus-visible:outline-2 sm:text-sm"
       >
         {playing ? 'Pause' : 'Play'}
       </button>
       <label className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="flex justify-between text-xs text-slate-400">
+        <span className="text-muted flex justify-between text-xs">
           <span>+{String(clamped)}h</span>
           <span>{formatForecastHour(start, clamped)}</span>
         </span>
@@ -43,6 +43,7 @@ export function TimeSlider({ start, hours }: Props) {
           max={max}
           step={1}
           value={clamped}
+          aria-label="Forecast hour"
           aria-valuetext={`${String(clamped)} hours after departure, ${formatForecastHour(start, clamped)}`}
           onChange={(event) => {
             setPlaying(false)
