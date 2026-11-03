@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react'
 
 export type Theme = 'dark' | 'light'
 
-const KEY = 'stormlane-theme'
+const KEY = 'weighcast-theme'
 const listeners = new Set<() => void>()
 
 let theme: Theme = 'dark'
@@ -49,5 +49,5 @@ function applyTheme(next: Theme): void {
   root.dataset.theme = next
   root.style.colorScheme = next
   const meta = document.querySelector('meta[name="theme-color"]')
-  if (meta) meta.setAttribute('content', next === 'dark' ? '#0b1220' : '#eef2f7')
+  if (meta) meta.setAttribute('content', next === 'dark' ? '#141210' : '#ebe4d6')
 }

@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class RoutingConfig(AppConfig):
-    name = "stormlane.routing"
+    name = "weighcast.routing"
     label = "routing"

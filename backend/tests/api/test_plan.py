@@ -9,9 +9,9 @@ from django.core.cache import cache
 from django.test import Client
 from django.utils import timezone
 
-from stormlane.core.polyline import decode
-from stormlane.routing.valhalla import ROUTES_URL
-from stormlane.weather.openmeteo import GEOCODE_URL, NOMINATIM_REVERSE_URL
+from weighcast.core.polyline import decode
+from weighcast.routing.valhalla import ROUTES_URL
+from weighcast.weather.openmeteo import GEOCODE_URL, NOMINATIM_REVERSE_URL
 from tests.fakes import (
     open_meteo_responder,
     straight_line,

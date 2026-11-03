@@ -18,7 +18,7 @@ class UpstreamError(Exception):
 
 
 def new_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, headers={"User-Agent": "stormlane/1.0"})
+    return httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, headers={"User-Agent": "weighcast/1.0"})
 
 
 async def get_with_retry(

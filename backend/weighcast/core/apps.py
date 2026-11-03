@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class CoreConfig(AppConfig):
-    name = "stormlane.core"
+    name = "weighcast.core"
     label = "core"

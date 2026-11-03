@@ -26,7 +26,7 @@ describe('TripForm', () => {
     const onSubmit = vi.fn()
     renderWithQuery(<TripForm pending={false} onSubmit={onSubmit} />)
 
-    await user.click(screen.getByRole('button', { name: 'Plan route' }))
+    await user.click(screen.getByRole('button', { name: 'Score the runs' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent('Choose a starting point')
     expect(onSubmit).not.toHaveBeenCalled()
@@ -37,13 +37,13 @@ describe('TripForm', () => {
     useTripStore.setState({ origin: chicago, destination: indy })
     renderWithQuery(<TripForm pending={false} onSubmit={vi.fn()} />)
 
-    expect(screen.getByLabelText('From')).toHaveValue('Chicago, IL')
-    expect(screen.getByLabelText('To')).toHaveValue('Indianapolis, IN')
+    expect(screen.getByLabelText('Yard')).toHaveValue('Chicago, IL')
+    expect(screen.getByLabelText('Destination')).toHaveValue('Indianapolis, IN')
 
-    await user.click(screen.getByRole('button', { name: 'Swap origin and destination' }))
+    await user.click(screen.getByRole('button', { name: 'Swap yard and destination' }))
 
-    expect(screen.getByLabelText('From')).toHaveValue('Indianapolis, IN')
-    expect(screen.getByLabelText('To')).toHaveValue('Chicago, IL')
+    expect(screen.getByLabelText('Yard')).toHaveValue('Indianapolis, IN')
+    expect(screen.getByLabelText('Destination')).toHaveValue('Chicago, IL')
   })
 
   it('submits a valid trip', async () => {
@@ -53,7 +53,7 @@ describe('TripForm', () => {
     renderWithQuery(<TripForm pending={false} onSubmit={onSubmit} />)
 
     await user.click(screen.getByText('10 mi'))
-    await user.click(screen.getByRole('button', { name: 'Plan route' }))
+    await user.click(screen.getByRole('button', { name: 'Score the runs' }))
 
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -70,7 +70,7 @@ describe('TripForm', () => {
     const user = userEvent.setup()
     renderWithQuery(<TripForm pending={false} onSubmit={vi.fn()} />)
 
-    await user.click(screen.getByRole('button', { name: 'Plan route' }))
+    await user.click(screen.getByRole('button', { name: 'Score the runs' }))
     expect(screen.getByRole('alert')).toBeInTheDocument()
 
     await user.click(screen.getByLabelText('Use wind gusts when scoring risk'))

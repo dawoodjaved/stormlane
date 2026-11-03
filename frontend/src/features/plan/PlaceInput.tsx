@@ -98,7 +98,7 @@ export function PlaceInput({ label, placeholder, value, onChange }: Props) {
           id={listId}
           role="listbox"
           aria-label={`${label} suggestions`}
-          className="border-border bg-surface-raised absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border py-1 shadow-xl"
+          className="border-border bg-surface-raised absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-sm border py-1 shadow-xl"
         >
           {waiting && <li className="text-muted px-3 py-2 text-sm">Searching…</li>}
           {!waiting && isError && (

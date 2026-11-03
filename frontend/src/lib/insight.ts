@@ -59,13 +59,13 @@ export function betterDeparture(plan: Plan, heatmap?: Heatmap | null): DelayHint
 
   if (!best || !now || best.delay === 0) return null
 
-  const wait = best.delay === 1 ? 'Wait 1 hour' : `Wait ${String(best.delay)} hours`
+  const wait = best.delay === 1 ? 'Hold 1 hour' : `Hold ${String(best.delay)} hours`
   const from = RISK_LABEL[now.max as RiskLevel]
   const to = RISK_LABEL[best.max as RiskLevel]
   const summary =
     now.max !== best.max
-      ? `${wait} — peak risk drops from ${from} to ${to} on ${best.routeName}.`
-      : `${wait} for a calmer run on ${best.routeName}.`
+      ? `${wait} at the dock — peak risk drops from ${from} to ${to} on ${best.routeName}.`
+      : `${wait} at the dock for a quieter corridor on ${best.routeName}.`
 
   return {
     delay: best.delay,

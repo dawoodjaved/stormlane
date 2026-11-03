@@ -1,7 +1,7 @@
 [project]
-name = "stormlane-backend"
+name = "weighcast-backend"
 version = "0.0.0"
-description = "Weather-aware truck routing API"
+description = "Weather-ranked truck routing API"
 requires-python = ">=3.12"
 
 [tool.ruff]
@@ -13,7 +13,7 @@ extend-exclude = ["staticfiles"]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "DJ", "ASYNC", "RUF", "PT"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["stormlane"]
+known-first-party = ["weighcast"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -30,10 +30,10 @@ module = ["environ.*"]
 ignore_missing_imports = true
 
 [tool.django-stubs]
-django_settings_module = "stormlane.settings_test"
+django_settings_module = "weighcast.settings_test"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "stormlane.settings_test"
+DJANGO_SETTINGS_MODULE = "weighcast.settings_test"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"

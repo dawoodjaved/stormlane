@@ -5,7 +5,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from stormlane.core.geometry import (
+from weighcast.core.geometry import (
     EARTH_RADIUS_M,
     METERS_PER_MILE,
     FloatArray,

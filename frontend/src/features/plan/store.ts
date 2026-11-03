@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import type { Place, Plan } from '../../lib/api.ts'
+import type { Place, Plan, WeatherMode } from '../../lib/api.ts'
 import { toDateTimeLocal, type WeightUnit } from '../../lib/format.ts'
 
 export type Interval = 10 | 25 | 50
@@ -13,6 +13,7 @@ export interface TripForm {
   loadUnit: WeightUnit
   interval: Interval
   gustAware: boolean
+  weatherMode: WeatherMode
 }
 
 const defaults = (): TripForm => ({
@@ -23,6 +24,7 @@ const defaults = (): TripForm => ({
   loadUnit: 'lb',
   interval: 25,
   gustAware: true,
+  weatherMode: 'live',
 })
 
 interface TripStore extends TripForm {
@@ -72,6 +74,7 @@ export function fieldsFromPlan(plan: Plan): Partial<TripForm> {
     loadUnit: 'lb',
     interval,
     gustAware: plan.gust_aware,
+    weatherMode: plan.weather_mode ?? 'live',
   }
 }
 

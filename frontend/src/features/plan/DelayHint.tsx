@@ -9,12 +9,12 @@ export function DelayHint({ plan, heatmap }: { plan: Plan; heatmap?: Heatmap }) 
   if (!hint) return null
 
   return (
-    <div className="border-accent/30 bg-accent/5 rounded-lg border p-3">
-      <p className="text-accent text-xs font-medium tracking-wide uppercase">Leave later</p>
+    <div className="border-accent/40 bg-accent/8 rounded-sm border p-3">
+      <p className="text-accent brand text-xs">Hold the gate</p>
       <p className="text-ink mt-1 text-sm">{hint.summary}</p>
       <button
         type="button"
-        className="text-accent focus-visible:outline-accent mt-2 rounded-sm text-xs font-medium hover:text-sky-300 focus-visible:outline-2"
+        className="text-accent focus-visible:outline-accent mt-2 rounded-sm text-xs font-medium hover:opacity-80 focus-visible:outline-2"
         onClick={() => {
           const map = useMapStore.getState()
           map.setPlaying(false)

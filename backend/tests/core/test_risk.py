@@ -3,8 +3,8 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from stormlane.core.geometry import METERS_PER_MILE
-from stormlane.core.risk import (
+from weighcast.core.geometry import METERS_PER_MILE
+from weighcast.core.risk import (
     RiskLevel,
     RouteRisk,
     Weather,

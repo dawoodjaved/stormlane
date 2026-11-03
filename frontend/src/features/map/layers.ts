@@ -6,7 +6,7 @@ import {
   type PointLike,
 } from 'maplibre-gl'
 
-import type { Checkpoint, Heatmap, Plan, PlannedRoute } from '../../lib/api.ts'
+import type { Checkpoint, Heatmap, HeatmapLayer, Plan, PlannedRoute } from '../../lib/api.ts'
 import { formatClock, prefersMoreContrast } from '../../lib/format.ts'
 import { RISK_HEX } from '../../lib/risk.ts'
 import { routeLinePaint } from '../../lib/routeStyle.ts'
@@ -263,13 +263,17 @@ export function syncRoutes(
   paint()
 }
 
-export function syncHeatmapData(map: MapLibreMap, heatmap: Heatmap | undefined): void {
+export function syncHeatmapData(
+  map: MapLibreMap,
+  heatmap: Heatmap | undefined,
+  layer: HeatmapLayer = 'risk',
+): void {
   const source = map.getSource('heatmap')
   if (!(source instanceof GeoJSONSource)) return
-  const planId = heatmap?.plan_id
-  if (planId === heatmapByMap.get(map)) return
-  heatmapByMap.set(map, planId)
-  void source.setData(heatmap ? heatmapCollection(heatmap) : EMPTY).then(() => {
+  const key = heatmap ? `${heatmap.plan_id}:${layer}` : `empty:${layer}`
+  if (key === heatmapByMap.get(map)) return
+  heatmapByMap.set(map, key)
+  void source.setData(heatmap ? heatmapCollection(heatmap, layer) : EMPTY).then(() => {
     keepHeatmapUnderRoutes(map)
   })
 }

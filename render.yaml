@@ -1,7 +1,8 @@
 services:
   - type: web
-    name: stormlane-api
+    name: weighcast-api
     runtime: docker
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/health
@@ -18,7 +19,7 @@ services:
         sync: false
       - key: REDIS_URL
         fromService:
-          name: stormlane-cache
+          name: weighcast-cache
           type: keyvalue
           property: connectionString
       - key: VALHALLA_URL
@@ -33,6 +34,7 @@ services:
         value: "2"
 
   - type: keyvalue
-    name: stormlane-cache
+    name: weighcast-cache
+    plan: free
     ipAllowList: []
     maxmemoryPolicy: allkeys-lru

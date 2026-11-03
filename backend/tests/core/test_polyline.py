@@ -3,7 +3,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from stormlane.core.polyline import decode, encode
+from weighcast.core.polyline import decode, encode
 
 POINTS = [
     (50.10228, 8.69821),

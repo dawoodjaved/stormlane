@@ -1,16 +1,20 @@
-import type { PlannedRoute, RiskLevel } from '../../lib/api.ts'
+import type { Plan, PlannedRoute, RiskLevel } from '../../lib/api.ts'
+import { whyNotChosen } from '../../lib/compare.ts'
 import { formatClock, formatDuration, formatMiles } from '../../lib/format.ts'
 import { RISK_DOT } from '../../lib/risk.ts'
 
 interface Props {
+  plan: Plan
   route: PlannedRoute
   recommended: boolean
   selected: boolean
   onSelect: () => void
 }
 
-export function RouteSummaryCard({ route, recommended, selected, onSelect }: Props) {
+export function RouteSummaryCard({ plan, route, recommended, selected, onSelect }: Props) {
   const { summary } = route
+  const skipReason = whyNotChosen(plan, route)
+  const via = route.via || viaFromName(route.name)
 
   return (
     <li>
@@ -19,20 +23,20 @@ export function RouteSummaryCard({ route, recommended, selected, onSelect }: Pro
         aria-pressed={selected}
         aria-current={selected ? 'true' : undefined}
         onClick={onSelect}
-        className={`focus-visible:outline-accent w-full rounded-lg border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
-          selected ? 'border-accent bg-accent/10' : 'border-border hover:bg-hover'
+        className={`focus-visible:outline-accent w-full rounded-sm border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${
+          selected ? 'border-accent bg-accent/12' : 'border-border hover:bg-hover'
         }`}
       >
         <div className="flex items-center justify-between gap-2">
           <span className="flex min-w-0 items-center gap-2 font-medium">
             <span
-              className={`size-2.5 shrink-0 rounded-full ${RISK_DOT[summary.max_level]}`}
+              className={`size-2.5 shrink-0 rounded-sm ${RISK_DOT[summary.max_level]}`}
               aria-hidden="true"
             />
-            <span className="truncate">{route.name}</span>
+            <span className="truncate">{via ? `${route.id} via ${via}` : route.name}</span>
             {recommended && (
-              <span className="bg-accent/15 text-accent shrink-0 rounded px-1.5 py-0.5 text-xs">
-                Best
+              <span className="bg-accent text-surface brand shrink-0 px-1.5 py-0.5 text-[0.65rem]">
+                Pick
               </span>
             )}
             {selected && <span className="sr-only">Selected</span>}
@@ -48,10 +52,16 @@ export function RouteSummaryCard({ route, recommended, selected, onSelect }: Pro
         <p className="text-subtle mt-1 text-xs">
           Avg risk {summary.avg_risk.toFixed(2)} · ETA {formatClock(route.arrival)}
         </p>
+        {skipReason && <p className="text-muted mt-1.5 text-xs italic">{skipReason}</p>}
         <RiskStrip checkpoints={route.checkpoints} />
       </button>
     </li>
   )
+}
+
+function viaFromName(name: string): string {
+  const match = / via (.+)$/i.exec(name)
+  return match?.[1] ?? ''
 }
 
 function RiskStrip({ checkpoints }: { checkpoints: PlannedRoute['checkpoints'] }) {

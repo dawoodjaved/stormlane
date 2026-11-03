@@ -1,19 +1,20 @@
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
+import { renderWithRouter } from '../test/render.tsx'
 import { Panel } from './Panel.tsx'
 
 describe('Panel', () => {
   it('toggles the planner body on small screens', async () => {
     const user = userEvent.setup()
-    render(
+    renderWithRouter(
       <Panel title="Trip planner">
         <p>Planner body</p>
       </Panel>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Stormlane' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Weighcast' })).toBeInTheDocument()
     expect(screen.getByLabelText('Trip planner')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Hide' }))

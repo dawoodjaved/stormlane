@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 import respx
 
-from stormlane.http import UpstreamError
-from stormlane.weather.openmeteo import (
+from weighcast.http import UpstreamError
+from weighcast.weather.openmeteo import (
     GEOCODE_URL,
     NOMINATIM_REVERSE_URL,
     HourlySeries,
