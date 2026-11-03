@@ -8,28 +8,28 @@ from uuid import uuid4
 import numpy as np
 from django.core.cache import cache
 
-from stormlane.core.geometry import (
+from weighcast.core.geometry import (
     METERS_PER_MILE,
     Checkpoints,
     FloatArray,
     build_profile,
     sample_checkpoints,
 )
-from stormlane.core.heatmap import corridor_grid
-from stormlane.core.polyline import encode_arrays
-from stormlane.core.risk import (
+from weighcast.core.heatmap import corridor_grid
+from weighcast.core.polyline import encode_arrays
+from weighcast.core.risk import (
     Classification,
     RiskLevel,
     RouteRisk,
     Weather,
     classify,
+    factor_levels,
     rank,
-    risk_levels,
     summarize,
 )
-from stormlane.routing.types import LatLon, TruckRoute
-from stormlane.routing.valhalla import ValhallaClient
-from stormlane.weather.openmeteo import OpenMeteoClient, grid_key, sample_weather
+from weighcast.routing.types import LatLon, TruckRoute
+from weighcast.routing.valhalla import ValhallaClient
+from weighcast.weather.openmeteo import OpenMeteoClient, grid_key, sample_weather
 
 HORIZON_HOURS = 48
 PLAN_TTL_S = 30 * 60
@@ -39,6 +39,9 @@ _COORD_NAME = re.compile(r"^-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$")
 
 class PlanNotFoundError(Exception):
     pass
+
+
+WEATHER_MODES = frozenset({"live", "storm", "calm"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +54,7 @@ class TripRequest:
     gust_aware: bool
     origin_name: str = ""
     destination_name: str = ""
+    weather_mode: str = "live"
 
 
 async def plan_trip(
@@ -73,11 +77,14 @@ async def plan_trip(
     payloads = []
     for route_id, route, profile, cp in zip(ids, routes, profiles, checkpoints, strict=True):
         eta = departure_ts + cp.eta_offset_s
-        sampled = sample_weather(series, cp.lat, cp.lon, eta)
+        sampled = _apply_weather_mode(
+            sample_weather(series, cp.lat, cp.lon, eta), trip.weather_mode, cp.lon
+        )
         result = classify(sampled, trip.load_lb, gust_aware=trip.gust_aware)
         risk = summarize(cp.distance_m, result.level, profile.total_duration_s)
-        risks[_route_name(route_id)] = risk
-        payloads.append(_route_payload(route_id, route, cp, eta, sampled, result, risk))
+        label = _route_label(route_id, route.via)
+        risks[label] = risk
+        payloads.append(_route_payload(route_id, route, cp, eta, sampled, result, risk, label))
 
     recommendation = rank(risks)
     plan_id = uuid4().hex
@@ -89,6 +96,7 @@ async def plan_trip(
         "load_lb": trip.load_lb,
         "interval_miles": trip.interval_miles,
         "gust_aware": trip.gust_aware,
+        "weather_mode": trip.weather_mode,
         "origin": origin,
         "destination": destination,
         "recommendation": {
@@ -105,6 +113,7 @@ async def plan_trip(
             "departure": trip.departure.isoformat(),
             "load_lb": trip.load_lb,
             "gust_aware": trip.gust_aware,
+            "weather_mode": trip.weather_mode,
             "max_duration_s": max_duration_s,
             "corridors": [
                 {"lat": c.lat.round(4).tolist(), "lon": c.lon.round(4).tolist()}
@@ -170,7 +179,9 @@ async def corridor_heatmap(
         rain_in=np.array([s.rain_in for s in samples]),
         snow_in=np.array([s.snow_in for s in samples]),
     )
-    levels = risk_levels(stacked, plan["load_lb"], gust_aware=plan["gust_aware"])
+    mode = str(plan.get("weather_mode") or "live")
+    stacked = _apply_weather_mode(stacked, mode, grid.lon)
+    factors = factor_levels(stacked, plan["load_lb"], gust_aware=plan["gust_aware"])
 
     return {
         "plan_id": plan_id,
@@ -178,8 +189,15 @@ async def corridor_heatmap(
         "hours": HORIZON_HOURS + 1,
         "cell_size_m": round(grid.cell_m),
         "cells": [
-            {"lat": round(float(lat), 4), "lon": round(float(lon), 4), "risk": row.tolist()}
-            for lat, lon, row in zip(grid.lat, grid.lon, levels, strict=True)
+            {
+                "lat": round(float(lat), 4),
+                "lon": round(float(lon), 4),
+                "risk": factors["risk"][i].tolist(),
+                "wind": factors["wind"][i].tolist(),
+                "rain": factors["rain"][i].tolist(),
+                "snow": factors["snow"][i].tolist(),
+            }
+            for i, (lat, lon) in enumerate(zip(grid.lat, grid.lon, strict=True))
         ],
     }
 
@@ -192,10 +210,12 @@ def _route_payload(
     sampled: Weather,
     result: Classification,
     risk: RouteRisk,
+    label: str,
 ) -> dict[str, Any]:
     return {
         "id": route_id,
-        "name": _route_name(route_id),
+        "name": label,
+        "via": route.via,
         "polyline": encode_arrays(route.lat, route.lon),
         "distance_m": round(route.length_m),
         "duration_s": round(route.duration_s),
@@ -235,12 +255,45 @@ def _forecast_window(departure: datetime, duration_s: float) -> tuple[datetime, 
     return departure, departure + span
 
 
-def _route_name(route_id: str) -> str:
-    return f"Route {route_id}"
+def _route_label(route_id: str, via: str) -> str:
+    base = f"Route {route_id}"
+    return f"{base} via {via}" if via else base
 
 
 def _route_id(name: str) -> str:
-    return name.removeprefix("Route ")
+    parts = name.split()
+    if len(parts) >= 2 and parts[0] == "Route":
+        return parts[1]
+    return name.removeprefix("Route ").split()[0]
+
+
+def _apply_weather_mode(weather: Weather, mode: str, lon: FloatArray) -> Weather:
+    """Overlay demo storm/calm patterns so calm days still demo risk."""
+    if mode == "live":
+        return weather
+    shape = weather.wind_mph.shape
+    lon = np.asarray(lon, dtype=np.float64)
+    if lon.ndim == 1 and weather.wind_mph.ndim == 2:
+        west = (lon < lon.mean()).astype(np.float64)[:, None]
+    else:
+        west = (lon < float(np.mean(lon))).astype(np.float64)
+    if mode == "calm":
+        return Weather(
+            wind_mph=np.full(shape, 8.0),
+            gust_mph=np.full(shape, 12.0),
+            rain_in=np.zeros(shape),
+            snow_in=np.zeros(shape),
+        )
+    # storm: western band gets severe wind + rain; eastern stays milder
+    wind = 18.0 + west * 40.0
+    gust = wind + 8.0
+    rain = west * 0.7
+    return Weather(
+        wind_mph=np.broadcast_to(wind, shape).astype(np.float64).copy(),
+        gust_mph=np.broadcast_to(gust, shape).astype(np.float64).copy(),
+        rain_in=np.broadcast_to(rain, shape).astype(np.float64).copy(),
+        snow_in=np.zeros(shape),
+    )
 
 
 def _plan_key(plan_id: str) -> str:

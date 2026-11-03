@@ -5,7 +5,7 @@ from enum import IntEnum
 import numpy as np
 import numpy.typing as npt
 
-from stormlane.core.geometry import METERS_PER_MILE, FloatArray
+from weighcast.core.geometry import METERS_PER_MILE, FloatArray
 
 LevelArray = npt.NDArray[np.int64]
 
@@ -85,6 +85,19 @@ class _Levels:
 def risk_levels(weather: Weather, load_lb: float, *, gust_aware: bool = True) -> LevelArray:
     """Risk level for weather arrays of any shape."""
     return _levels(weather, load_lb, gust_aware).overall
+
+
+def factor_levels(
+    weather: Weather, load_lb: float, *, gust_aware: bool = True
+) -> dict[str, LevelArray]:
+    """Overall + per-hazard levels for heatmap layer toggles."""
+    levels = _levels(weather, load_lb, gust_aware)
+    return {
+        "risk": levels.overall,
+        "wind": np.maximum(levels.wind, levels.load),
+        "rain": levels.rain,
+        "snow": levels.snow,
+    }
 
 
 def classify(weather: Weather, load_lb: float, *, gust_aware: bool = True) -> Classification:

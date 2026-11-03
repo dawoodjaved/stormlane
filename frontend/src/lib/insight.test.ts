@@ -71,7 +71,7 @@ describe('betterDeparture', () => {
       ]),
     )
     expect(hint).toMatchObject({ delay: 3, routeId: 'B' })
-    expect(hint?.summary).toContain('Wait 3 hours')
+    expect(hint?.summary).toContain('Hold 3 hours')
     expect(hint?.summary).toContain('No Travel')
     expect(hint?.summary).toContain('Low')
   })

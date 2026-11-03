@@ -17,6 +17,7 @@ describe('plan share url', () => {
   })
 
   it('writes a shareable query', () => {
-    expect(withPlanQuery(id, 'http://localhost:5173/')).toBe(`http://localhost:5173/?p=${id}`)
+    expect(withPlanQuery(id, 'http://localhost:5173/')).toBe(`http://localhost:5173/app?p=${id}`)
+    expect(withPlanQuery(id, 'http://localhost:5173/app')).toBe(`http://localhost:5173/app?p=${id}`)
   })
 })

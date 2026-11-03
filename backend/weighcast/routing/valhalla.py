@@ -7,10 +7,10 @@ import httpx
 import numpy as np
 from django.core.cache import cache
 
-from stormlane.core.geometry import FloatArray, Span
-from stormlane.core.polyline import decode
-from stormlane.http import get_with_retry
-from stormlane.routing.types import KG_PER_LB, ROUTES_CACHE_TTL_S, LatLon, NoRouteError, TruckRoute
+from weighcast.core.geometry import FloatArray, Span
+from weighcast.core.polyline import decode
+from weighcast.http import get_with_retry
+from weighcast.routing.types import KG_PER_LB, ROUTES_CACHE_TTL_S, LatLon, NoRouteError, TruckRoute
 
 ROUTES_URL = "https://valhalla1.openstreetmap.de/route"
 KG_PER_TONNE = 1000.0
@@ -77,6 +77,7 @@ def _parse_trip(trip: dict[str, Any], departure: datetime, route_id: str) -> Tru
     lat_parts: list[FloatArray] = []
     lon_parts: list[FloatArray] = []
     spans: list[Span] = []
+    highway_miles: dict[str, float] = {}
     vertex_count = 0
 
     for leg in trip.get("legs") or []:
@@ -90,6 +91,8 @@ def _parse_trip(trip: dict[str, Any], departure: datetime, route_id: str) -> Tru
             offset = base + int(maneuver["begin_shape_index"])
             length_m = float(maneuver.get("length") or 0) * 1000.0
             duration_s = float(maneuver.get("time") or 0)
+            for name in _highway_names(maneuver):
+                highway_miles[name] = highway_miles.get(name, 0.0) + length_m / 1000.0
             if offset < 0:
                 continue
             if spans and offset <= spans[-1].offset:
@@ -123,7 +126,34 @@ def _parse_trip(trip: dict[str, Any], departure: datetime, route_id: str) -> Tru
         departure=departure,
         arrival=departure + timedelta(seconds=duration_s),
         notices=[],
+        via=_top_highways(highway_miles),
     )
+
+
+def _highway_names(maneuver: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    for key in ("street_names", "begin_street_names"):
+        raw = maneuver.get(key) or []
+        if isinstance(raw, list):
+            names.extend(str(item) for item in raw if item)
+    return [_normalize_highway(name) for name in names if _looks_like_highway(name)]
+
+
+def _looks_like_highway(name: str) -> bool:
+    upper = name.upper()
+    return any(token in upper for token in ("I ", "I-", "US ", "US-", "HWY", "HIGHWAY", "STATE "))
+
+
+def _normalize_highway(name: str) -> str:
+    cleaned = " ".join(name.replace("Interstate", "I").split())
+    return cleaned.replace("I-", "I ").replace("US-", "US ").strip()
+
+
+def _top_highways(miles: dict[str, float], limit: int = 2) -> str:
+    if not miles:
+        return ""
+    ranked = sorted(miles.items(), key=lambda item: item[1], reverse=True)
+    return " & ".join(name for name, _ in ranked[:limit])
 
 
 def _error_message(response: httpx.Response) -> str:

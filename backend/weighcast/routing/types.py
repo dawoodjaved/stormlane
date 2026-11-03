@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from stormlane.core.geometry import FloatArray, Span
+from weighcast.core.geometry import FloatArray, Span
 
 LatLon = tuple[float, float]
 
@@ -24,3 +24,4 @@ class TruckRoute:
     departure: datetime
     arrival: datetime
     notices: list[str]
+    via: str = ""

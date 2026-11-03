@@ -13,6 +13,7 @@ const valid: TripForm = {
   loadUnit: 'lb',
   interval: 25,
   gustAware: true,
+  weatherMode: 'live',
 }
 
 describe('toRequest', () => {
@@ -26,6 +27,7 @@ describe('toRequest', () => {
       load_lb: 36_000,
       interval_miles: 25,
       gust_aware: true,
+      weather_mode: 'live',
     })
   })
 

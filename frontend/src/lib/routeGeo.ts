@@ -1,4 +1,4 @@
-import type { Checkpoint, Heatmap, PlannedRoute } from './api.ts'
+import type { Checkpoint, Heatmap, HeatmapLayer, PlannedRoute, RiskLevel } from './api.ts'
 import { decodePolyline, type LngLat } from './polyline.ts'
 import { riskHex } from './risk.ts'
 
@@ -93,15 +93,19 @@ export function checkpointCollection(
   }
 }
 
-export function heatmapCollection(heatmap: Heatmap): {
+export function heatmapCollection(
+  heatmap: Heatmap,
+  layer: HeatmapLayer = 'risk',
+): {
   type: 'FeatureCollection'
   features: PointFeature[]
 } {
   return {
     type: 'FeatureCollection',
     features: heatmap.cells.map((cell) => {
+      const series = layerSeries(cell, layer)
       const properties: Record<string, number> = {}
-      cell.risk.forEach((level, hour) => {
+      series.forEach((level, hour) => {
         properties[`h${String(hour)}`] = level
       })
       return {
@@ -111,6 +115,13 @@ export function heatmapCollection(heatmap: Heatmap): {
       }
     }),
   }
+}
+
+function layerSeries(cell: Heatmap['cells'][number], layer: HeatmapLayer): RiskLevel[] {
+  if (layer === 'wind') return cell.wind ?? cell.risk
+  if (layer === 'rain') return cell.rain ?? cell.risk
+  if (layer === 'snow') return cell.snow ?? cell.risk
+  return cell.risk
 }
 
 export function positionAtHour(route: PlannedRoute, hour: number): LngLat | null {

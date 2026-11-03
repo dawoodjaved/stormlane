@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 import respx
 
-from stormlane.routing.types import NoRouteError
-from stormlane.routing.valhalla import ROUTES_URL, ValhallaClient
+from weighcast.routing.types import NoRouteError
+from weighcast.routing.valhalla import ROUTES_URL, ValhallaClient
 from tests.fakes import straight_line, valhalla_payload, valhalla_trip
 
 DEPARTURE = datetime(2026, 11, 3, 10, tzinfo=UTC)

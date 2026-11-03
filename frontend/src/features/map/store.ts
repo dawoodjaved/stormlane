@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import type { HeatmapLayer } from '../../lib/api.ts'
+
 export interface FocusedCheckpoint {
   routeId: string
   index: number
@@ -11,10 +13,12 @@ interface MapState {
   hour: number
   playing: boolean
   fitNonce: number
+  heatmapLayer: HeatmapLayer
   selectRoute: (id: string) => void
   focusCheckpoint: (focused: FocusedCheckpoint | null) => void
   setHour: (hour: number) => void
   setPlaying: (playing: boolean) => void
+  setHeatmapLayer: (layer: HeatmapLayer) => void
   requestFit: () => void
   reset: (routeId: string) => void
 }
@@ -25,6 +29,7 @@ export const useMapStore = create<MapState>()((set) => ({
   hour: 0,
   playing: false,
   fitNonce: 0,
+  heatmapLayer: 'risk',
   selectRoute: (selectedRouteId) => {
     set({ selectedRouteId, focused: null })
   },
@@ -36,6 +41,9 @@ export const useMapStore = create<MapState>()((set) => ({
   },
   setPlaying: (playing) => {
     set({ playing })
+  },
+  setHeatmapLayer: (heatmapLayer) => {
+    set({ heatmapLayer })
   },
   requestFit: () => {
     set((state) => ({ fitNonce: state.fitNonce + 1 }))

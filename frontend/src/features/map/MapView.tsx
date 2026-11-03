@@ -46,17 +46,20 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
   const focused = useMapStore((state) => state.focused)
   const hour = useMapStore((state) => state.hour)
   const fitNonce = useMapStore((state) => state.fitNonce)
+  const heatmapLayer = useMapStore((state) => state.heatmapLayer)
   const planRef = useRef(plan)
   const heatmapRef = useRef(heatmap)
   const selectedRef = useRef(selectedRouteId)
   const hourRef = useRef(hour)
+  const layerRef = useRef(heatmapLayer)
 
   useEffect(() => {
     planRef.current = plan
     heatmapRef.current = heatmap
     selectedRef.current = selectedRouteId
     hourRef.current = hour
-  }, [plan, heatmap, selectedRouteId, hour])
+    layerRef.current = heatmapLayer
+  }, [plan, heatmap, selectedRouteId, hour, heatmapLayer])
 
   useEffect(() => {
     if (!container.current) return
@@ -81,7 +84,7 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
       const current = planRef.current
       const selected = selectedRef.current
       syncRoutes(map, current, selected)
-      syncHeatmapData(map, heatmapRef.current)
+      syncHeatmapData(map, heatmapRef.current, layerRef.current)
       syncHeatmapHour(map, hourRef.current)
       const route =
         current?.routes.find((item) => item.id === (selected ?? current.recommendation.route_id)) ??
@@ -150,8 +153,8 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
   useEffect(() => {
     const map = mapRef.current
     if (!ready || !map?.isStyleLoaded()) return
-    syncHeatmapData(map, heatmap)
-  }, [heatmap, ready])
+    syncHeatmapData(map, heatmap, heatmapLayer)
+  }, [heatmap, heatmapLayer, ready])
 
   useEffect(() => {
     const map = mapRef.current
@@ -205,16 +208,16 @@ export default function MapView({ plan, heatmap, pending = false }: Props) {
         aria-describedby="map-help"
       />
       {!plan && !pending && (
-        <p className="border-border bg-surface/80 text-muted pointer-events-none absolute top-4 right-14 left-3 z-[1] rounded-lg border px-3 py-2 text-center text-sm md:right-auto md:left-1/2 md:w-[min(22rem,calc(100%-2rem))] md:-translate-x-1/2">
-          Plan a trip to see weather-ranked truck routes.
+        <p className="border-border bg-surface/90 text-muted pointer-events-none absolute top-4 right-14 left-3 z-[1] rounded-sm border px-3 py-2 text-center text-sm md:right-auto md:left-1/2 md:w-[min(22rem,calc(100%-2rem))] md:-translate-x-1/2">
+          Score a run to paint risk-ranked corridors on the map.
         </p>
       )}
       {pending && (
         <p
-          className="bg-surface/80 text-muted pointer-events-none absolute top-4 right-14 left-3 z-[1] rounded-lg px-3 py-2 text-center text-sm md:right-auto md:left-1/2 md:w-auto md:-translate-x-1/2"
+          className="bg-surface/90 text-muted pointer-events-none absolute top-4 right-14 left-3 z-[1] rounded-sm px-3 py-2 text-center text-sm md:right-auto md:left-1/2 md:w-auto md:-translate-x-1/2"
           aria-live="polite"
         >
-          Drawing routes…
+          Laying down corridors…
         </p>
       )}
     </div>

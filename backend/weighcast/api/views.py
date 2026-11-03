@@ -14,18 +14,18 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from stormlane.api import serializers as s
-from stormlane.api.planning import (
+from weighcast.api import serializers as s
+from weighcast.api.planning import (
     PlanNotFoundError,
     TripRequest,
     corridor_heatmap,
     load_plan,
     plan_trip,
 )
-from stormlane.http import UpstreamError, new_client
-from stormlane.routing.types import NoRouteError
-from stormlane.routing.valhalla import ValhallaClient
-from stormlane.weather.openmeteo import OpenMeteoClient
+from weighcast.http import UpstreamError, new_client
+from weighcast.routing.types import NoRouteError
+from weighcast.routing.valhalla import ValhallaClient
+from weighcast.weather.openmeteo import OpenMeteoClient
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,7 @@ class PlanView(APIView):
             gust_aware=data["gust_aware"],
             origin_name=str(data["origin"].get("name") or ""),
             destination_name=str(data["destination"].get("name") or ""),
+            weather_mode=str(data.get("weather_mode") or "live"),
         )
 
         async def run() -> dict[str, Any]:

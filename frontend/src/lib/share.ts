@@ -8,12 +8,14 @@ export function planIdFromSearch(search = window.location.search): string | null
 
 export function withPlanQuery(planId: string, href = window.location.href): string {
   const url = new URL(href)
+  if (!url.pathname.startsWith('/app')) url.pathname = '/app'
   url.searchParams.set('p', planId)
   return url.toString()
 }
 
 export function replacePlanQuery(planId: string | null, href = window.location.href): void {
   const url = new URL(href)
+  if (!url.pathname.startsWith('/app')) url.pathname = '/app'
   if (planId) url.searchParams.set('p', planId)
   else url.searchParams.delete('p')
   window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)

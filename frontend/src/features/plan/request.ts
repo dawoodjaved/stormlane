@@ -29,5 +29,6 @@ export function toRequest(form: TripForm, now: Date = new Date()): PlanRequest |
     load_lb: Math.round(loadLb),
     interval_miles: form.interval,
     gust_aware: form.gustAware,
+    weather_mode: form.weatherMode,
   }
 }
