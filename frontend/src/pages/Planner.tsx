@@ -47,6 +47,19 @@ export default function Planner() {
     if (shared.data && !created.data) useTripStore.getState().hydrate(shared.data)
   }, [shared.data, created.data])
 
+  useEffect(() => {
+    const html = document.documentElement
+    const body = document.body
+    const prevHtml = html.style.overflow
+    const prevBody = body.style.overflow
+    html.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+    return () => {
+      html.style.overflow = prevHtml
+      body.style.overflow = prevBody
+    }
+  }, [])
+
   function newTrip() {
     created.reset()
     queryClient.removeQueries({ queryKey: ['heatmap'] })
@@ -58,7 +71,7 @@ export default function Planner() {
   }
 
   return (
-    <div className="relative h-dvh overflow-hidden md:flex">
+    <div className="fixed inset-0 flex overflow-hidden md:flex">
       <a
         href="#planner"
         className="bg-accent text-surface sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-sm focus:px-3 focus:py-2"
@@ -117,7 +130,7 @@ export default function Planner() {
           onNewTrip={newTrip}
         />
       </Panel>
-      <main className="absolute inset-0 md:relative md:min-w-0 md:flex-1">
+      <main className="relative min-h-0 min-w-0 flex-1">
         <Suspense fallback={<div className="bg-surface h-full w-full" aria-hidden="true" />}>
           <MapView plan={plan} heatmap={heatmap.data} pending={pending} />
         </Suspense>
