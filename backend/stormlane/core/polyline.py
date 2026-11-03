@@ -4,86 +4,62 @@ import numpy as np
 import numpy.typing as npt
 
 FloatArray = npt.NDArray[np.float64]
-IntArray = npt.NDArray[np.int64]
-
-FORMAT_VERSION = 1
-
-_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-_LOOKUP = np.full(256, -1, dtype=np.int64)
-_LOOKUP[np.frombuffer(_ALPHABET.encode("ascii"), dtype=np.uint8)] = np.arange(64)
-_MAX_CHUNKS_PER_VALUE = 12
 
 
-def decode(encoded: str) -> tuple[FloatArray, FloatArray]:
-    """Decode a HERE flexible polyline. A third dimension, if present, is dropped."""
-    values = _decode_varints(encoded)
-    if values.size < 2:
-        raise ValueError("Polyline is missing its header")
-    if values[0] != FORMAT_VERSION:
-        raise ValueError(f"Unsupported polyline version {values[0]}")
-
-    header = int(values[1])
-    precision = header & 0x0F
-    dims = 3 if (header >> 4) & 0x07 else 2
-
-    deltas = values[2:]
-    if deltas.size % dims:
-        raise ValueError("Polyline ends in the middle of a coordinate")
-
-    signed = (deltas >> 1) ^ -(deltas & 1)
-    coords = np.cumsum(signed.reshape(-1, dims), axis=0) / 10.0**precision
-    return np.ascontiguousarray(coords[:, 0]), np.ascontiguousarray(coords[:, 1])
+def decode(encoded: str, precision: int = 6) -> tuple[FloatArray, FloatArray]:
+    factor = 10.0**precision
+    lat = lon = 0
+    pos = 0
+    lats: list[float] = []
+    lons: list[float] = []
+    length = len(encoded)
+    while pos < length:
+        lat_delta, pos = _value(encoded, pos)
+        lon_delta, pos = _value(encoded, pos)
+        lat += lat_delta
+        lon += lon_delta
+        lats.append(lat / factor)
+        lons.append(lon / factor)
+    return np.asarray(lats, dtype=np.float64), np.asarray(lons, dtype=np.float64)
 
 
-def encode(points: Iterable[tuple[float, float]], precision: int = 5) -> str:
-    if not 0 <= precision <= 15:
-        raise ValueError("Precision must be between 0 and 15")
-
-    scale = 10**precision
-    parts = [_encode_unsigned(FORMAT_VERSION), _encode_unsigned(precision)]
+def encode(points: Iterable[tuple[float, float]], precision: int = 6) -> str:
+    factor = 10.0**precision
     prev_lat = prev_lon = 0
+    chars: list[str] = []
     for lat, lon in points:
-        lat_i, lon_i = round(lat * scale), round(lon * scale)
-        parts.append(_encode_signed(lat_i - prev_lat))
-        parts.append(_encode_signed(lon_i - prev_lon))
-        prev_lat, prev_lon = lat_i, lon_i
-    return "".join(parts)
+        ilat = round(lat * factor)
+        ilon = round(lon * factor)
+        chars.append(_chunk(ilat - prev_lat))
+        chars.append(_chunk(ilon - prev_lon))
+        prev_lat, prev_lon = ilat, ilon
+    return "".join(chars)
 
 
-def _decode_varints(encoded: str) -> IntArray:
-    try:
-        raw = np.frombuffer(encoded.encode("ascii"), dtype=np.uint8)
-    except UnicodeEncodeError as exc:
-        raise ValueError("Polyline contains non-ASCII characters") from exc
-    if raw.size == 0:
-        return np.empty(0, dtype=np.int64)
-
-    chunks = _LOOKUP[raw]
-    if (chunks < 0).any():
-        raise ValueError("Polyline contains invalid characters")
-
-    ends = np.flatnonzero((chunks & 0x20) == 0)
-    if ends.size == 0 or ends[-1] != chunks.size - 1:
-        raise ValueError("Polyline is truncated")
-
-    starts = np.concatenate(([0], ends[:-1] + 1))
-    lengths = ends - starts + 1
-    if lengths.max() > _MAX_CHUNKS_PER_VALUE:
-        raise ValueError("Polyline value is out of range")
-
-    position = np.arange(chunks.size) - np.repeat(starts, lengths)
-    values: IntArray = np.add.reduceat((chunks & 0x1F) << (5 * position), starts)
-    return values
+def encode_arrays(lat: FloatArray, lon: FloatArray, precision: int = 6) -> str:
+    return encode(zip(lat.tolist(), lon.tolist(), strict=True), precision)
 
 
-def _encode_signed(value: int) -> str:
-    return _encode_unsigned(~(value << 1) if value < 0 else value << 1)
+def _value(encoded: str, pos: int) -> tuple[int, int]:
+    shift = result = 0
+    while True:
+        if pos >= len(encoded):
+            raise ValueError("Polyline is truncated")
+        chunk = ord(encoded[pos]) - 63
+        pos += 1
+        result |= (chunk & 0x1F) << shift
+        shift += 5
+        if chunk < 0x20:
+            break
+    value = ~(result >> 1) if result & 1 else result >> 1
+    return value, pos
 
 
-def _encode_unsigned(value: int) -> str:
-    chars = []
-    while value > 0x1F:
-        chars.append(_ALPHABET[(value & 0x1F) | 0x20])
-        value >>= 5
-    chars.append(_ALPHABET[value])
+def _chunk(value: int) -> str:
+    unsigned = ~(value << 1) if value < 0 else value << 1
+    chars: list[str] = []
+    while unsigned >= 0x20:
+        chars.append(chr((0x20 | (unsigned & 0x1F)) + 63))
+        unsigned >>= 5
+    chars.append(chr(unsigned + 63))
     return "".join(chars)

@@ -1,45 +1,31 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense } from 'react'
 
-import { apiUrl } from './lib/config.ts'
+import { Panel } from './components/Panel.tsx'
+import { PlanResult } from './features/plan/PlanResult.tsx'
+import { TripForm } from './features/plan/TripForm.tsx'
+import { usePlan } from './features/plan/usePlan.ts'
 
-type ApiStatus = 'checking' | 'online' | 'offline'
-
-const STATUS_STYLES: Record<ApiStatus, string> = {
-  checking: 'bg-slate-500',
-  online: 'bg-risk-low',
-  offline: 'bg-risk-severe',
-}
+const MapView = lazy(() => import('./features/map/MapView.tsx'))
 
 export default function App() {
-  const [status, setStatus] = useState<ApiStatus>('checking')
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(apiUrl('/api/health'), { signal: controller.signal })
-      .then((res) => {
-        setStatus(res.ok ? 'online' : 'offline')
-      })
-      .catch((err: unknown) => {
-        if (!controller.signal.aborted) {
-          console.warn('Health check failed', err)
-          setStatus('offline')
-        }
-      })
-    return () => {
-      controller.abort()
-    }
-  }, [])
+  const plan = usePlan()
 
   return (
-    <main className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-4xl font-semibold tracking-tight">Stormlane</h1>
-      <p className="max-w-md text-slate-400">
-        Weather-aware truck routing. Compare alternatives by storm risk before you roll.
-      </p>
-      <p className="flex items-center gap-2 text-sm text-slate-300" role="status">
-        <span className={`size-2.5 rounded-full ${STATUS_STYLES[status]}`} aria-hidden="true" />
-        API {status}
-      </p>
-    </main>
+    <div className="relative h-full md:flex">
+      <Panel title="Trip planner">
+        <TripForm
+          pending={plan.isPending}
+          onSubmit={(request) => {
+            plan.mutate(request)
+          }}
+        />
+        <PlanResult plan={plan.data} pending={plan.isPending} error={plan.error} />
+      </Panel>
+      <main className="absolute inset-0 md:static md:flex-1">
+        <Suspense fallback={<div className="bg-surface h-full w-full" aria-hidden="true" />}>
+          <MapView />
+        </Suspense>
+      </main>
+    </div>
   )
 }

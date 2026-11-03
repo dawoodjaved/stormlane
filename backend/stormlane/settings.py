@@ -12,9 +12,10 @@ env = environ.Env(
     CORS_ALLOWED_ORIGINS=(list, ["http://localhost:5173", "http://127.0.0.1:5173"]),
     CSRF_TRUSTED_ORIGINS=(list, []),
     REDIS_URL=(str, ""),
-    HERE_API_KEY=(str, ""),
     OPEN_METEO_BASE_URL=(str, "https://api.open-meteo.com/v1/forecast"),
+    VALHALLA_URL=(str, "https://valhalla1.openstreetmap.de/route"),
     LOG_LEVEL=(str, "INFO"),
+    HEATMAP_MAX_CELLS=(int, 600),
 )
 
 for env_file in (REPO_ROOT / ".env", BASE_DIR / ".env"):
@@ -33,6 +34,7 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "corsheaders",
     "rest_framework",
+    "drf_spectacular",
     "stormlane.core",
     "stormlane.routing",
     "stormlane.weather",
@@ -50,7 +52,12 @@ MIDDLEWARE = [
 ROOT_URLCONF = "stormlane.urls"
 ASGI_APPLICATION = "stormlane.asgi.application"
 
-TEMPLATES: list[dict[str, Any]] = []
+TEMPLATES: list[dict[str, Any]] = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "APP_DIRS": True,
+    }
+]
 
 DATABASES = {
     "default": {
@@ -92,10 +99,24 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "UNAUTHENTICATED_USER": None,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_RATES": {
+        "plan": "20/min",
+        "heatmap": "30/min",
+        "geocode": "120/min",
+    },
 }
 
-HERE_API_KEY: str = env("HERE_API_KEY")
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Stormlane API",
+    "DESCRIPTION": "Weather-aware truck routing",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+}
+
 OPEN_METEO_BASE_URL: str = env("OPEN_METEO_BASE_URL")
+VALHALLA_URL: str = env("VALHALLA_URL")
+HEATMAP_MAX_CELLS: int = env("HEATMAP_MAX_CELLS")
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -113,4 +134,8 @@ LOGGING = {
         "console": {"class": "logging.StreamHandler", "formatter": "simple"},
     },
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL")},
+    "loggers": {
+        "httpx": {"level": "WARNING"},
+        "httpcore": {"level": "WARNING"},
+    },
 }

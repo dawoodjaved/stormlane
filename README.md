@@ -1,14 +1,14 @@
 # Stormlane
 
-Weather-aware truck routing. Stormlane gets three truck routes from HERE, checks the Open-Meteo
-forecast at points along each route based on when the truck will reach them, scores wind, rain and
-snow risk against the truck's load, and recommends the safest route.
+Weather-aware truck routing. Stormlane gets truck routes from Valhalla (OpenStreetMap), checks the
+Open-Meteo forecast at points along each route based on when the truck will reach them, scores
+wind, rain and snow risk against the truck's load, and recommends the safest route.
 
 ## Stack
 
 - Frontend: React 18, Vite, TypeScript, Tailwind CSS
 - Backend: Django 5.2 (ASGI), Django REST Framework
-- APIs: HERE Routing v8, HERE Autosuggest, Open-Meteo
+- APIs: Valhalla truck routing (OSM), Open-Meteo geocoding and weather
 - Hosting: Vercel (frontend), Render (backend)
 
 ## Project structure
@@ -17,7 +17,7 @@ snow risk against the truck's load, and recommends the safest route.
 backend/
   stormlane/
     core/       routing and risk logic
-    routing/    HERE client
+    routing/    Valhalla client
     weather/    Open-Meteo client
     api/        endpoints
   tests/
@@ -27,13 +27,11 @@ frontend/
 
 ## Setup
 
-Requirements: Python 3.12+, Node 22, and optionally Docker.
+Requirements: Python 3.14, Node 22, and optionally Docker.
 
 ```bash
 cp .env.example .env
 ```
-
-Add your `HERE_API_KEY` to `.env`.
 
 ### Docker
 
@@ -96,7 +94,8 @@ npm run build
 | `CORS_ALLOWED_ORIGINS` | Origins allowed to call the API              |
 | `CSRF_TRUSTED_ORIGINS` | Trusted origins for CSRF                     |
 | `REDIS_URL`            | Redis cache; uses in-memory cache when empty |
-| `HERE_API_KEY`         | HERE API key                                 |
+| `VALHALLA_URL`         | Valhalla route endpoint                      |
 | `OPEN_METEO_BASE_URL`  | Open-Meteo forecast endpoint                 |
+| `HEATMAP_MAX_CELLS`    | Max cells in the corridor heatmap grid       |
 | `LOG_LEVEL`            | Log level, defaults to `INFO`                |
 | `VITE_API_URL`         | Backend URL for production builds            |

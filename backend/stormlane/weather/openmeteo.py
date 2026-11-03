@@ -1,0 +1,205 @@
+import asyncio
+import hashlib
+from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+import httpx
+import numpy as np
+from django.core.cache import cache
+
+from stormlane.core.geometry import FloatArray
+from stormlane.core.risk import Weather
+from stormlane.http import UpstreamError, get_with_retry
+
+HOURLY_VARIABLES = ("wind_speed_10m", "wind_gusts_10m", "rain", "showers", "snowfall")
+GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+CHUNK_SIZE = 50
+MAX_CONCURRENT_REQUESTS = 6
+CACHE_TTL_S = 30 * 60
+GEOCODE_CACHE_TTL_S = 24 * 60 * 60
+GEOCODE_FETCH = 20
+GEOCODE_COUNTRIES = frozenset({"US", "CA", "MX"})
+GRID_DECIMALS = 2
+
+GridKey = tuple[float, float]
+
+
+@dataclass(frozen=True, slots=True, eq=False)
+class HourlySeries:
+    time: FloatArray
+    wind_mph: FloatArray
+    gust_mph: FloatArray
+    rain_in: FloatArray
+    snow_in: FloatArray
+
+    def at(self, timestamps: FloatArray) -> Weather:
+        return Weather(
+            wind_mph=np.interp(timestamps, self.time, self.wind_mph),
+            gust_mph=np.interp(timestamps, self.time, self.gust_mph),
+            rain_in=np.interp(timestamps, self.time, self.rain_in),
+            snow_in=np.interp(timestamps, self.time, self.snow_in),
+        )
+
+
+def grid_key(lat: float, lon: float) -> GridKey:
+    return (round(float(lat), GRID_DECIMALS), round(float(lon), GRID_DECIMALS))
+
+
+def sample_weather(
+    series: dict[GridKey, HourlySeries],
+    lat: FloatArray,
+    lon: FloatArray,
+    timestamps: FloatArray,
+) -> Weather:
+    groups: dict[GridKey, list[int]] = {}
+    for i, (la, lo) in enumerate(zip(lat, lon, strict=True)):
+        groups.setdefault(grid_key(la, lo), []).append(i)
+
+    out = Weather(*(np.zeros(timestamps.shape) for _ in range(4)))
+    for key, indices in groups.items():
+        sampled = series[key].at(timestamps[indices])
+        out.wind_mph[indices] = sampled.wind_mph
+        out.gust_mph[indices] = sampled.gust_mph
+        out.rain_in[indices] = sampled.rain_in
+        out.snow_in[indices] = sampled.snow_in
+    return out
+
+
+class OpenMeteoClient:
+    def __init__(self, http: httpx.AsyncClient, base_url: str) -> None:
+        self._http = http
+        self._base_url = base_url
+        self._limit = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+    async def hourly(
+        self, keys: Iterable[GridKey], start: datetime, end: datetime
+    ) -> dict[GridKey, HourlySeries]:
+        start_hour = _floor_hour(start)
+        end_hour = _floor_hour(end) + timedelta(hours=1)
+        unique = list(dict.fromkeys(keys))
+
+        cache_keys = {key: _cache_key(key, start_hour, end_hour) for key in unique}
+        cached: dict[str, dict[str, list[float]]] = await cache.aget_many(cache_keys.values())
+        result = {key: _to_series(cached[ck]) for key, ck in cache_keys.items() if ck in cached}
+
+        missing = [key for key in unique if key not in result]
+        chunks = [missing[i : i + CHUNK_SIZE] for i in range(0, len(missing), CHUNK_SIZE)]
+        fetched = await asyncio.gather(
+            *(self._fetch(chunk, start_hour, end_hour) for chunk in chunks)
+        )
+
+        to_cache: dict[str, dict[str, list[float]]] = {}
+        for chunk, rows in zip(chunks, fetched, strict=True):
+            for key, row in zip(chunk, rows, strict=True):
+                result[key] = _to_series(row)
+                to_cache[cache_keys[key]] = row
+        if to_cache:
+            await cache.aset_many(to_cache, CACHE_TTL_S)
+        return result
+
+    async def geocode(self, query: str, limit: int = 5) -> list[tuple[str, float, float]]:
+        params = {
+            "name": query.strip(),
+            "count": GEOCODE_FETCH,
+            "language": "en",
+            "format": "json",
+        }
+        digest = hashlib.sha256(f"{query.strip().lower()}:{limit}".encode()).hexdigest()
+        cache_key = f"om:geocode:{digest}"
+        cached: list[tuple[str, float, float]] | None = await cache.aget(cache_key)
+        if cached is not None:
+            return cached
+
+        response = await get_with_retry(self._http, GEOCODE_URL, params, service="Open-Meteo")
+        body = response.json()
+        if response.status_code >= 400:
+            reason = body.get("reason") if isinstance(body, dict) else None
+            raise UpstreamError("Open-Meteo", reason or f"responded with {response.status_code}")
+
+        rows = body.get("results") if isinstance(body, dict) else None
+        places: list[tuple[str, float, float]] = []
+        for row in rows or []:
+            if "latitude" not in row or "longitude" not in row:
+                continue
+            code = row.get("country_code")
+            if isinstance(code, str) and code not in GEOCODE_COUNTRIES:
+                continue
+            places.append(_geocode_place(row))
+            if len(places) == limit:
+                break
+        await cache.aset(cache_key, places, GEOCODE_CACHE_TTL_S)
+        return places
+
+    async def _fetch(
+        self, keys: Sequence[GridKey], start_hour: datetime, end_hour: datetime
+    ) -> list[dict[str, list[float]]]:
+        params = {
+            "latitude": ",".join(f"{lat:.2f}" for lat, _ in keys),
+            "longitude": ",".join(f"{lon:.2f}" for _, lon in keys),
+            "hourly": ",".join(HOURLY_VARIABLES),
+            "wind_speed_unit": "mph",
+            "precipitation_unit": "inch",
+            "timeformat": "unixtime",
+            "timezone": "GMT",
+            "start_hour": start_hour.strftime("%Y-%m-%dT%H:%M"),
+            "end_hour": end_hour.strftime("%Y-%m-%dT%H:%M"),
+        }
+        async with self._limit:
+            response = await get_with_retry(
+                self._http, self._base_url, params, service="Open-Meteo"
+            )
+        body = response.json()
+        if response.status_code >= 400:
+            reason = body.get("reason") if isinstance(body, dict) else None
+            raise UpstreamError("Open-Meteo", reason or f"responded with {response.status_code}")
+
+        locations = body if isinstance(body, list) else [body]
+        if len(locations) != len(keys):
+            raise UpstreamError("Open-Meteo", "returned the wrong number of locations")
+        return [_compact(location["hourly"]) for location in locations]
+
+
+def _compact(hourly: dict[str, list[float | None]]) -> dict[str, list[float]]:
+    def column(name: str) -> FloatArray:
+        values = np.array(hourly.get(name) or [], dtype=np.float64)
+        return np.nan_to_num(values, nan=0.0)
+
+    if not hourly.get("time"):
+        raise UpstreamError("Open-Meteo", "returned no hourly data")
+    rain = column("rain")
+    showers = column("showers")
+    if showers.size == rain.size:
+        rain = rain + showers
+    return {
+        "time": column("time").tolist(),
+        "wind_mph": column("wind_speed_10m").tolist(),
+        "gust_mph": column("wind_gusts_10m").tolist(),
+        "rain_in": rain.tolist(),
+        "snow_in": column("snowfall").tolist(),
+    }
+
+
+def _to_series(row: dict[str, list[float]]) -> HourlySeries:
+    return HourlySeries(
+        time=np.asarray(row["time"], dtype=np.float64),
+        wind_mph=np.asarray(row["wind_mph"], dtype=np.float64),
+        gust_mph=np.asarray(row["gust_mph"], dtype=np.float64),
+        rain_in=np.asarray(row["rain_in"], dtype=np.float64),
+        snow_in=np.asarray(row["snow_in"], dtype=np.float64),
+    )
+
+
+def _cache_key(key: GridKey, start_hour: datetime, end_hour: datetime) -> str:
+    return f"om:{key[0]:.2f},{key[1]:.2f}:{start_hour:%Y%m%d%H}:{end_hour:%Y%m%d%H}"
+
+
+def _floor_hour(moment: datetime) -> datetime:
+    return moment.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
+
+
+def _geocode_place(row: dict[str, Any]) -> tuple[str, float, float]:
+    parts = [row.get("name"), row.get("admin1"), row.get("country")]
+    name = ", ".join(part for part in parts if isinstance(part, str) and part)
+    return (name, float(row["latitude"]), float(row["longitude"]))
