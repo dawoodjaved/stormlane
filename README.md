@@ -24,7 +24,6 @@ ranked by No Travel, then severe miles, high miles, average risk, then duration.
 each alternative with a risk gradient and overlays a 0–48 hour corridor heatmap.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/RISK_RULES.md](docs/RISK_RULES.md).
-A short recording outline lives in [docs/LOOM.md](docs/LOOM.md).
 
 ## What makes Weighcast different
 
