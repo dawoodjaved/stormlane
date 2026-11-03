@@ -138,9 +138,10 @@ No third-party API keys are required.
 `render.yaml` builds `backend/Dockerfile` and a Key Value cache.
 
 1. Create the Blueprint from this repo.
-2. Set `DJANGO_ALLOWED_HOSTS` to the Render hostname (and a custom domain if you add one).
-3. After Vercel is live, set `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` to the Vercel origin,
-   for example `https://weighcast.vercel.app`.
+2. Set `DJANGO_ALLOWED_HOSTS` to the Render hostname, for example `weighcast-api.onrender.com`
+   (no `https://`).
+3. Set `CORS_ALLOWED_ORIGINS` and `CSRF_TRUSTED_ORIGINS` to the Vercel origin:
+   `https://weighcast.vercel.app`.
 4. `DJANGO_SECRET_KEY` is generated. Leave `DJANGO_DEBUG=false`.
 5. Health check: `GET /api/health`.
 
