@@ -1,27 +1,32 @@
-import type { Plan, RiskLevel } from '../../lib/api.ts'
-import { formatDuration, formatMiles } from '../../lib/format.ts'
+import type { UseQueryResult } from '@tanstack/react-query'
 
-const LEVEL_DOT: Record<RiskLevel, string> = {
-  0: 'bg-risk-low',
-  1: 'bg-risk-moderate',
-  2: 'bg-risk-high',
-  3: 'bg-risk-severe',
-  4: 'bg-risk-no-travel',
-}
+import type { Heatmap, Plan } from '../../lib/api.ts'
+import { Legend } from '../map/Legend.tsx'
+import { TimeSlider } from '../map/TimeSlider.tsx'
+import { useMapStore } from '../map/store.ts'
+import { CheckpointList } from './CheckpointList.tsx'
+import { RouteSummaryCard } from './RouteSummaryCard.tsx'
 
 interface Props {
   plan: Plan | undefined
   pending: boolean
   error: Error | null
+  heatmap: UseQueryResult<Heatmap>
 }
 
-export function PlanResult({ plan, pending, error }: Props) {
+export function PlanResult({ plan, pending, error, heatmap }: Props) {
+  const selectedRouteId = useMapStore((state) => state.selectedRouteId)
+  const focused = useMapStore((state) => state.focused)
+  const selectRoute = useMapStore((state) => state.selectRoute)
+  const focusCheckpoint = useMapStore((state) => state.focusCheckpoint)
+
   if (pending) {
     return (
       <div className="space-y-3" aria-busy="true" aria-live="polite">
         <p className="text-sm text-slate-400">Checking routes and forecasts…</p>
-        <div className="h-20 animate-pulse rounded-lg bg-white/5" />
-        <div className="h-14 animate-pulse rounded-lg bg-white/5" />
+        <div className="h-20 animate-pulse rounded-lg bg-white/5 motion-reduce:animate-none" />
+        <div className="h-16 animate-pulse rounded-lg bg-white/5 motion-reduce:animate-none" />
+        <div className="h-16 animate-pulse rounded-lg bg-white/5 motion-reduce:animate-none" />
       </div>
     )
   }
@@ -37,11 +42,22 @@ export function PlanResult({ plan, pending, error }: Props) {
     )
   }
 
-  if (!plan) return null
+  if (!plan) {
+    return (
+      <p className="text-sm text-slate-500">
+        Pick an origin, destination, and departure to compare weather along the truck routes.
+      </p>
+    )
+  }
 
   const { recommendation } = plan
+  const selectedId = selectedRouteId ?? recommendation.route_id
+  const selected = plan.routes.find((route) => route.id === selectedId) ?? plan.routes[0]
+  const forecastHours = heatmap.data?.hours ?? 49
+  const forecastStart = heatmap.data?.start ?? plan.departure
+
   return (
-    <section aria-label="Results" className="space-y-3">
+    <section aria-label="Results" className="space-y-4">
       <div
         className={`rounded-lg border p-3 ${
           recommendation.no_safe_route ? 'border-risk-no-travel/60' : 'border-accent/40'
@@ -55,38 +71,47 @@ export function PlanResult({ plan, pending, error }: Props) {
 
       <ul className="space-y-2">
         {recommendation.order.map((id) => {
-          const route = plan.routes.find((r) => r.id === id)
+          const route = plan.routes.find((item) => item.id === id)
           if (!route) return null
-          const { summary } = route
           return (
-            <li key={id} className="border-border rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 font-medium">
-                  <span
-                    className={`size-2.5 rounded-full ${LEVEL_DOT[summary.max_level]}`}
-                    aria-hidden="true"
-                  />
-                  {route.name}
-                  {id === recommendation.route_id && (
-                    <span className="bg-accent/15 text-accent rounded px-1.5 py-0.5 text-xs">
-                      Best
-                    </span>
-                  )}
-                </span>
-                <span className="text-sm text-slate-400">
-                  {formatMiles(route.distance_m)} · {formatDuration(route.duration_s)}
-                </span>
-              </div>
-              <p className="mt-1.5 text-xs text-slate-400">
-                Severe {summary.severe_miles.toFixed(1)} mi · High {summary.high_miles.toFixed(1)}{' '}
-                mi
-                {summary.no_travel_miles > 0 &&
-                  ` · No Travel ${summary.no_travel_miles.toFixed(1)} mi`}
-              </p>
-            </li>
+            <RouteSummaryCard
+              key={id}
+              route={route}
+              recommended={id === recommendation.route_id}
+              selected={id === selectedId}
+              onSelect={() => {
+                selectRoute(id)
+              }}
+            />
           )
         })}
       </ul>
+
+      {heatmap.isPending && (
+        <p className="text-xs text-slate-500" aria-live="polite">
+          Loading corridor forecast…
+        </p>
+      )}
+      {heatmap.isError && (
+        <p role="alert" className="text-risk-high text-xs">
+          Corridor forecast could not be loaded. Routes are still usable.
+        </p>
+      )}
+
+      <div className="space-y-3 md:hidden">
+        <Legend />
+        <TimeSlider start={forecastStart} hours={forecastHours} />
+      </div>
+
+      {selected && (
+        <CheckpointList
+          route={selected}
+          focusedIndex={focused?.routeId === selected.id ? focused.index : null}
+          onFocus={(index) => {
+            focusCheckpoint({ routeId: selected.id, index })
+          }}
+        />
+      )}
     </section>
   )
 }

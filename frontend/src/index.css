@@ -25,4 +25,45 @@
   body {
     @apply bg-surface font-sans text-slate-100 antialiased;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+.maplibregl-popup-content {
+  background: #111a2e;
+  color: #e2e8f0;
+  border: 1px solid #1f2a44;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 8px 10px;
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: #111a2e;
+}
+
+.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: #111a2e;
+}
+
+.maplibregl-ctrl-group {
+  background: #111a2e;
+  border: 1px solid #1f2a44;
+}
+
+.maplibregl-ctrl-group button {
+  background-color: #111a2e;
+}
+
+.maplibregl-ctrl button:not(:disabled):hover {
+  background-color: #1a2744;
 }
