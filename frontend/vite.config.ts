@@ -7,6 +7,13 @@ export default defineConfig({
   envDir: '..',
   build: {
     chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('maplibre-gl')) return 'maplibre'
+        },
+      },
+    },
   },
   server: {
     port: 5173,
