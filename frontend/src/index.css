@@ -39,17 +39,17 @@
 
 [data-theme='light'] {
   color-scheme: light;
-  --surface: #d8dde4;
-  --surface-raised: #eef1f5;
-  --border: #b8c0cc;
-  --accent: #c45c00;
-  --ink: #15181e;
-  --muted: #4a5563;
-  --subtle: #6b7787;
-  --hover: rgb(196 92 0 / 0.1);
-  --map-case: #eef1f5;
-  --rail: #c45c00;
-  --panel-glow: radial-gradient(120% 80% at 0% 0%, rgb(196 92 0 / 0.1), transparent 55%);
+  --surface: #e6eaf0;
+  --surface-raised: #f7f8fb;
+  --border: #c2cad6;
+  --accent: #b45309;
+  --ink: #12151a;
+  --muted: #3f4b5a;
+  --subtle: #667385;
+  --hover: rgb(180 83 9 / 0.1);
+  --map-case: #f7f8fb;
+  --rail: #b45309;
+  --panel-glow: radial-gradient(120% 80% at 0% 0%, rgb(180 83 9 / 0.1), transparent 55%);
 }
 
 @layer base {
@@ -102,7 +102,32 @@
 }
 
 .landing-hero-visual {
-  background: #0c0b09;
+  background: var(--landing-sky-bottom, #0c0b09);
+}
+
+[data-theme='dark'] {
+  --landing-sky-top: #1c1814;
+  --landing-sky-mid: #141210;
+  --landing-sky-bottom: #0c0b09;
+  --landing-road-a: #2a2620;
+  --landing-road-b: #3a342c;
+  --landing-mark: #ebe6dc;
+  --landing-glow: #f0a202;
+}
+
+[data-theme='light'] {
+  --landing-sky-top: #e8edf4;
+  --landing-sky-mid: #d8dde4;
+  --landing-sky-bottom: #c9d0da;
+  --landing-road-a: #b0b8c4;
+  --landing-road-b: #9aa3b0;
+  --landing-mark: #3a4452;
+  --landing-glow: #c45c00;
+}
+
+fieldset {
+  min-inline-size: 0;
+  min-width: 0;
 }
 
 .landing-rise {

@@ -16,7 +16,7 @@ export function Panel({ title, children }: Props) {
     <aside
       id="planner"
       aria-label={title}
-      className="border-border bg-surface-raised fixed inset-x-0 bottom-0 z-10 flex max-h-[min(72dvh,36rem)] flex-col border-t pb-[env(safe-area-inset-bottom)] shadow-2xl sm:max-h-[75dvh] md:static md:z-auto md:h-full md:max-h-none md:w-[22rem] md:shrink-0 md:border-t-0 md:border-r md:pb-0 md:shadow-none lg:w-[24rem]"
+      className="border-border bg-surface-raised fixed inset-x-0 bottom-0 z-10 flex max-h-[min(72dvh,36rem)] min-w-0 flex-col overflow-x-clip border-t pb-[env(safe-area-inset-bottom)] shadow-2xl sm:max-h-[75dvh] md:static md:z-auto md:h-full md:max-h-none md:w-[22rem] md:shrink-0 md:border-t-0 md:border-r md:pb-0 md:shadow-none lg:w-[24rem]"
       style={{ backgroundImage: 'var(--panel-glow)' }}
     >
       <div

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 
+import { IconGate } from '../../components/Icons.tsx'
 import type { Heatmap, Plan } from '../../lib/api.ts'
 import { betterDeparture } from '../../lib/insight.ts'
 import { useMapStore } from '../map/store.ts'
@@ -10,7 +11,10 @@ export function DelayHint({ plan, heatmap }: { plan: Plan; heatmap?: Heatmap }) 
 
   return (
     <div className="border-accent/40 bg-accent/8 rounded-sm border p-3">
-      <p className="text-accent brand text-xs">Hold the gate</p>
+      <p className="text-accent brand flex items-center gap-1.5 text-xs">
+        <IconGate className="size-3.5" />
+        Hold the gate
+      </p>
       <p className="text-ink mt-1 text-sm">{hint.summary}</p>
       <button
         type="button"

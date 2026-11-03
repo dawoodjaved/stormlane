@@ -1,7 +1,14 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
 import { BrandMark } from '../components/BrandMark.tsx'
+import {
+  IconCloud,
+  IconGate,
+  IconShare,
+  IconTruck,
+  IconWind,
+} from '../components/Icons.tsx'
 import { ThemeToggle } from '../components/ThemeToggle.tsx'
 import { DemoTour } from '../features/plan/DemoTour.tsx'
 
@@ -9,38 +16,45 @@ const STEPS = [
   {
     n: '01',
     title: 'Set the run',
-    body: 'Yard, destination, gate time, load weight, and how often to sample the corridor.',
+    body: 'Yard, destination, gate time, load weight, and checkpoint spacing along the corridor.',
+    icon: <IconTruck className="size-5" />,
   },
   {
     n: '02',
     title: 'Score every corridor',
     body: 'Valhalla truck routes meet Open-Meteo at each ETA. Wind, gusts, rain, and snow rank the options.',
+    icon: <IconCloud className="size-5" />,
   },
   {
     n: '03',
     title: 'Dispatch with eyes open',
     body: 'Pick the safest run, hold the gate if later is calmer, share the plan, jump to the worst stretch.',
+    icon: <IconGate className="size-5" />,
   },
 ] as const
 
-const CAPABILITIES = [
+const CAPABILITIES: { title: string; body: string; icon: ReactNode }[] = [
   {
     title: 'Gust-aware risk',
     body: 'Load rules tighten when wind is already high. Optional gust scoring uses the worse of sustained and peak.',
+    icon: <IconWind className="size-5" />,
   },
   {
     title: 'Hold the gate',
     body: 'Scan the next 48 hours. If waiting cuts peak risk, Weighcast says how long to hold and shows that hour on the map.',
+    icon: <IconGate className="size-5" />,
   },
   {
     title: 'Shareable plans',
     body: 'Copy a link with ?p=. Teammates reopen the same ranking with city names restored, not raw coordinates.',
+    icon: <IconShare className="size-5" />,
   },
   {
     title: 'Corridor heatmap',
     body: 'Scrub 0–48h across the band around every alternate. Risk gradients paint the line; the truck walks the ETAs.',
+    icon: <IconCloud className="size-5" />,
   },
-] as const
+]
 
 export function Landing() {
   const [demoOpen, setDemoOpen] = useState(false)
@@ -136,7 +150,10 @@ export function Landing() {
                   className="border-border grid gap-3 border-t py-8 md:grid-cols-[5rem_1fr_1.4fr] md:gap-8 md:py-10"
                 >
                   <span className="brand text-accent text-2xl">{step.n}</span>
-                  <h3 className="brand text-ink text-2xl leading-none">{step.title}</h3>
+                  <h3 className="brand text-ink flex items-center gap-2.5 text-2xl leading-none">
+                    <span className="text-accent">{step.icon}</span>
+                    {step.title}
+                  </h3>
                   <p className="text-muted text-sm leading-relaxed sm:text-base">{step.body}</p>
                 </li>
               ))}
@@ -157,7 +174,10 @@ export function Landing() {
             <ul className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2">
               {CAPABILITIES.map((item) => (
                 <li key={item.title} className="border-accent/40 border-l-2 pl-4">
-                  <h3 className="brand text-ink text-xl leading-none">{item.title}</h3>
+                  <h3 className="brand text-ink flex items-center gap-2 text-xl leading-none">
+                    <span className="text-accent">{item.icon}</span>
+                    {item.title}
+                  </h3>
                   <p className="text-muted mt-3 text-sm leading-relaxed">{item.body}</p>
                 </li>
               ))}
@@ -233,14 +253,14 @@ function CorridorArt() {
     <svg className="h-full w-full" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
       <defs>
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1c1814" />
-          <stop offset="55%" stopColor="#141210" />
-          <stop offset="100%" stopColor="#0c0b09" />
+          <stop offset="0%" stopColor="var(--landing-sky-top)" />
+          <stop offset="55%" stopColor="var(--landing-sky-mid)" />
+          <stop offset="100%" stopColor="var(--landing-sky-bottom)" />
         </linearGradient>
         <linearGradient id="road" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#2a2620" />
-          <stop offset="50%" stopColor="#3a342c" />
-          <stop offset="100%" stopColor="#2a2620" />
+          <stop offset="0%" stopColor="var(--landing-road-a)" />
+          <stop offset="50%" stopColor="var(--landing-road-b)" />
+          <stop offset="100%" stopColor="var(--landing-road-a)" />
         </linearGradient>
         <linearGradient id="risk" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="#3d9a5f" />
@@ -258,14 +278,14 @@ function CorridorArt() {
         cy="180"
         rx="280"
         ry="120"
-        fill="#f0a202"
-        opacity="0.07"
+        fill="var(--landing-glow)"
+        opacity="0.12"
         filter="url(#soft)"
       />
       <path
         d="M-40 720 C 280 560, 520 640, 760 520 S 1180 420, 1520 560 L 1520 940 L -40 940 Z"
         fill="url(#road)"
-        opacity="0.9"
+        opacity="0.85"
       />
       <path
         className="landing-risk-line"
@@ -277,15 +297,15 @@ function CorridorArt() {
       />
       <path
         d="M80 760 L 220 680 L 260 700 L 140 790 Z"
-        fill="#f0a202"
-        opacity="0.85"
+        fill="var(--landing-glow)"
+        opacity="0.9"
         className="landing-cab"
       />
-      <g opacity="0.35" stroke="#ebe6dc" strokeWidth="1.5">
+      <g opacity="0.4" stroke="var(--landing-mark)" strokeWidth="1.5">
         <path d="M420 180 v90 M380 225 h80" />
         <path d="M980 120 v70 M950 155 h60" />
       </g>
-      <rect x="0" y="0" width="18" height="900" fill="#f0a202" opacity="0.9" />
+      <rect x="0" y="0" width="18" height="900" fill="var(--landing-glow)" opacity="0.95" />
     </svg>
   )
 }

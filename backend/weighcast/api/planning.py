@@ -1,3 +1,4 @@
+import asyncio
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -66,10 +67,15 @@ async def plan_trip(
 
     max_duration_s = max(p.total_duration_s for p in profiles)
     start, end = _forecast_window(trip.departure, max_duration_s)
-    keys = [
-        grid_key(lat, lon) for cp in checkpoints for lat, lon in zip(cp.lat, cp.lon, strict=True)
-    ]
-    series = await weather.hourly(keys, start, end)
+    demo_weather = trip.weather_mode in {"storm", "calm"}
+    series: dict = {}
+    if not demo_weather:
+        keys = [
+            grid_key(lat, lon)
+            for cp in checkpoints
+            for lat, lon in zip(cp.lat, cp.lon, strict=True)
+        ]
+        series = await weather.hourly(keys, start, end)
 
     departure_ts = trip.departure.timestamp()
     ids = list(ascii_uppercase[: len(routes)])
@@ -77,9 +83,18 @@ async def plan_trip(
     payloads = []
     for route_id, route, profile, cp in zip(ids, routes, profiles, checkpoints, strict=True):
         eta = departure_ts + cp.eta_offset_s
-        sampled = _apply_weather_mode(
-            sample_weather(series, cp.lat, cp.lon, eta), trip.weather_mode, cp.lon
-        )
+        if demo_weather:
+            blank = Weather(
+                wind_mph=np.zeros(eta.shape),
+                gust_mph=np.zeros(eta.shape),
+                rain_in=np.zeros(eta.shape),
+                snow_in=np.zeros(eta.shape),
+            )
+            sampled = _apply_weather_mode(blank, trip.weather_mode, cp.lon)
+        else:
+            sampled = _apply_weather_mode(
+                sample_weather(series, cp.lat, cp.lon, eta), trip.weather_mode, cp.lon
+            )
         result = classify(sampled, trip.load_lb, gust_aware=trip.gust_aware)
         risk = summarize(cp.distance_m, result.level, profile.total_duration_s)
         label = _route_label(route_id, route.via)
@@ -88,8 +103,10 @@ async def plan_trip(
 
     recommendation = rank(risks)
     plan_id = uuid4().hex
-    origin = await _resolved_place(weather, trip.origin, trip.origin_name)
-    destination = await _resolved_place(weather, trip.destination, trip.destination_name)
+    origin, destination = await asyncio.gather(
+        _resolved_place(weather, trip.origin, trip.origin_name),
+        _resolved_place(weather, trip.destination, trip.destination_name),
+    )
     body = {
         "plan_id": plan_id,
         "departure": trip.departure.isoformat(),
@@ -167,20 +184,33 @@ async def corridor_heatmap(
         [(np.asarray(c["lat"]), np.asarray(c["lon"])) for c in plan["corridors"]],
         max_cells=max_cells,
     )
-    start, end = _forecast_window(departure, plan["max_duration_s"])
-    keys = [grid_key(lat, lon) for lat, lon in zip(grid.lat, grid.lon, strict=True)]
-    series = await weather.hourly(keys, start, end)
-
-    hours = departure.timestamp() + 3600.0 * np.arange(HORIZON_HOURS + 1, dtype=np.float64)
-    samples = [series[key].at(hours) for key in keys]
-    stacked = Weather(
-        wind_mph=np.array([s.wind_mph for s in samples]),
-        gust_mph=np.array([s.gust_mph for s in samples]),
-        rain_in=np.array([s.rain_in for s in samples]),
-        snow_in=np.array([s.snow_in for s in samples]),
-    )
     mode = str(plan.get("weather_mode") or "live")
-    stacked = _apply_weather_mode(stacked, mode, grid.lon)
+    hours = HORIZON_HOURS + 1
+    if mode in {"storm", "calm"}:
+        shape = (len(grid.lat), hours)
+        stacked = _apply_weather_mode(
+            Weather(
+                wind_mph=np.zeros(shape),
+                gust_mph=np.zeros(shape),
+                rain_in=np.zeros(shape),
+                snow_in=np.zeros(shape),
+            ),
+            mode,
+            grid.lon,
+        )
+    else:
+        start, end = _forecast_window(departure, plan["max_duration_s"])
+        keys = [grid_key(lat, lon) for lat, lon in zip(grid.lat, grid.lon, strict=True)]
+        series = await weather.hourly(keys, start, end)
+        stamps = departure.timestamp() + 3600.0 * np.arange(hours, dtype=np.float64)
+        samples = [series[key].at(stamps) for key in keys]
+        stacked = Weather(
+            wind_mph=np.array([s.wind_mph for s in samples]),
+            gust_mph=np.array([s.gust_mph for s in samples]),
+            rain_in=np.array([s.rain_in for s in samples]),
+            snow_in=np.array([s.snow_in for s in samples]),
+        )
+        stacked = _apply_weather_mode(stacked, mode, grid.lon)
     factors = factor_levels(stacked, plan["load_lb"], gust_aware=plan["gust_aware"])
 
     return {

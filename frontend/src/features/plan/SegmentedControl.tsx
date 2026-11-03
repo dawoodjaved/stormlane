@@ -23,15 +23,18 @@ export function SegmentedControl<T extends string | number>({
   const name = useId()
 
   return (
-    <fieldset className="min-w-0">
+    <fieldset className="m-0 min-w-0 border-0 p-0" style={{ minInlineSize: 0 }}>
       <legend className={hideLabel ? 'sr-only' : 'text-muted mb-1.5 text-sm font-medium'}>
         {label}
       </legend>
-      <div className="border-border bg-surface flex rounded-sm border p-0.5">
+      <div
+        role="presentation"
+        className="border-border bg-surface flex min-w-0 overflow-hidden rounded-sm border p-0.5"
+      >
         {options.map((option) => (
           <label
             key={String(option.value)}
-            className="has-checked:bg-accent has-checked:text-surface has-focus-visible:outline-accent text-muted flex-1 cursor-pointer rounded-sm px-3 py-1.5 text-center text-sm transition-colors has-checked:font-medium has-focus-visible:outline-2"
+            className="has-checked:bg-accent has-checked:text-surface has-focus-visible:outline-accent text-muted flex min-w-0 flex-1 cursor-pointer items-center justify-center rounded-sm px-2 py-1.5 text-center text-sm leading-tight transition-colors has-checked:font-medium has-focus-visible:outline-2"
           >
             <input
               type="radio"
@@ -42,7 +45,7 @@ export function SegmentedControl<T extends string | number>({
                 onChange(option.value)
               }}
             />
-            {option.label}
+            <span className="truncate">{option.label}</span>
           </label>
         ))}
       </div>

@@ -22,7 +22,7 @@ const defaults = (): TripForm => ({
   departure: toDateTimeLocal(new Date()),
   load: '36000',
   loadUnit: 'lb',
-  interval: 25,
+  interval: 50,
   gustAware: true,
   weatherMode: 'live',
 })

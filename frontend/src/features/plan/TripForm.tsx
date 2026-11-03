@@ -1,5 +1,15 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 
+import {
+  IconCloud,
+  IconClock,
+  IconLocate,
+  IconPin,
+  IconRuler,
+  IconSwap,
+  IconTruck,
+  IconWeight,
+} from '../../components/Icons.tsx'
 import type { PlanRequest, WeatherMode } from '../../lib/api.ts'
 import { fromPounds, toDateTimeLocal, toPounds, type WeightUnit } from '../../lib/format.ts'
 import { PlaceInput } from './PlaceInput.tsx'
@@ -116,10 +126,12 @@ export function TripForm({ pending, onSubmit }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex min-w-0 flex-col gap-4">
+    <form onSubmit={handleSubmit} noValidate className="flex min-w-0 flex-col gap-4 overflow-x-clip">
       <div>
-        <p className="text-muted mb-2 text-sm font-medium">Try a sample trip</p>
-        <ul className="flex flex-col gap-1.5">
+        <FieldLabel icon={<IconTruck className="text-accent size-3.5" />}>
+          Try a sample trip
+        </FieldLabel>
+        <ul className="mt-2 flex flex-col gap-1.5">
           {TRIP_PRESETS.map((preset) => (
             <li key={preset.id}>
               <button
@@ -152,8 +164,9 @@ export function TripForm({ pending, onSubmit }: Props) {
           type="button"
           disabled={pending || locating}
           onClick={useMyLocation}
-          className="focus-visible:outline-accent hover:bg-hover text-muted rounded-sm px-2 py-1 text-xs focus-visible:outline-2 disabled:opacity-40"
+          className="focus-visible:outline-accent hover:bg-hover text-muted inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs focus-visible:outline-2 disabled:opacity-40"
         >
+          <IconLocate className="size-3.5" />
           {locating ? 'Locating…' : 'Use my location'}
         </button>
         <button
@@ -164,8 +177,9 @@ export function TripForm({ pending, onSubmit }: Props) {
             setError(null)
             form.swap()
           }}
-          className="focus-visible:outline-accent hover:bg-hover text-muted rounded-sm px-2 py-1 text-xs focus-visible:outline-2 disabled:opacity-40"
+          className="focus-visible:outline-accent hover:bg-hover text-muted inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs focus-visible:outline-2 disabled:opacity-40"
         >
+          <IconSwap className="size-3.5" />
           Flip
         </button>
       </div>
@@ -179,10 +193,10 @@ export function TripForm({ pending, onSubmit }: Props) {
         }}
       />
 
-      <div>
-        <label htmlFor="departure" className="text-muted mb-1.5 block text-sm font-medium">
+      <div className="min-w-0">
+        <FieldLabel htmlFor="departure" icon={<IconClock className="text-accent size-3.5" />}>
           Gate time
-        </label>
+        </FieldLabel>
         <input
           id="departure"
           type="datetime-local"
@@ -211,11 +225,11 @@ export function TripForm({ pending, onSubmit }: Props) {
         </div>
       </div>
 
-      <div>
-        <label htmlFor="load" className="text-muted mb-1.5 block text-sm font-medium">
+      <div className="min-w-0">
+        <FieldLabel htmlFor="load" icon={<IconWeight className="text-accent size-3.5" />}>
           Load weight
-        </label>
-        <div className="flex gap-2">
+        </FieldLabel>
+        <div className="flex min-w-0 items-stretch gap-2">
           <input
             id="load"
             type="number"
@@ -226,9 +240,9 @@ export function TripForm({ pending, onSubmit }: Props) {
             onChange={(event) => {
               change({ load: event.target.value })
             }}
-            className="field min-w-0"
+            className="field min-w-0 flex-1"
           />
-          <div className="w-24 shrink-0 sm:w-28">
+          <div className="w-[5.5rem] shrink-0">
             <SegmentedControl
               label="Weight unit"
               hideLabel
@@ -240,23 +254,37 @@ export function TripForm({ pending, onSubmit }: Props) {
         </div>
       </div>
 
-      <SegmentedControl
-        label="Sample weather every"
-        options={INTERVALS}
-        value={form.interval}
-        onChange={(interval) => {
-          change({ interval })
-        }}
-      />
+      <div className="min-w-0">
+        <FieldLabel icon={<IconRuler className="text-accent size-3.5" />}>
+          Checkpoint spacing
+        </FieldLabel>
+        <p className="text-subtle mb-1.5 text-xs leading-snug">
+          How often to sample weather along the corridor. Wider spacing is faster; tighter is more
+          detail.
+        </p>
+        <SegmentedControl
+          label="Checkpoint spacing"
+          hideLabel
+          options={INTERVALS}
+          value={form.interval}
+          onChange={(interval) => {
+            change({ interval })
+          }}
+        />
+      </div>
 
-      <SegmentedControl
-        label="Weather source"
-        options={WEATHER_MODES}
-        value={form.weatherMode}
-        onChange={(weatherMode) => {
-          change({ weatherMode })
-        }}
-      />
+      <div className="min-w-0">
+        <FieldLabel icon={<IconCloud className="text-accent size-3.5" />}>Weather source</FieldLabel>
+        <SegmentedControl
+          label="Weather source"
+          hideLabel
+          options={WEATHER_MODES}
+          value={form.weatherMode}
+          onChange={(weatherMode) => {
+            change({ weatherMode })
+          }}
+        />
+      </div>
 
       <label className="text-muted flex items-center gap-2.5 text-sm">
         <input
@@ -280,12 +308,34 @@ export function TripForm({ pending, onSubmit }: Props) {
         type="submit"
         disabled={pending}
         aria-busy={pending}
-        className="bg-accent text-surface focus-visible:outline-accent brand rounded-sm px-4 py-2.5 text-base tracking-wide transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
+        className="bg-accent text-surface focus-visible:outline-accent brand inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2.5 text-base tracking-wide transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-60"
       >
+        <IconPin className="size-4" />
         {pending ? 'Scoring runs…' : 'Score the runs'}
       </button>
     </form>
   )
+}
+
+function FieldLabel({
+  children,
+  icon,
+  htmlFor,
+}: {
+  children: ReactNode
+  icon: ReactNode
+  htmlFor?: string
+}) {
+  const content = (
+    <span className="text-muted mb-1.5 flex items-center gap-1.5 text-sm font-medium">
+      {icon}
+      {children}
+    </span>
+  )
+  if (htmlFor) {
+    return <label htmlFor={htmlFor}>{content}</label>
+  }
+  return <p className="m-0">{content}</p>
 }
 
 function Chip({ label, onClick }: { label: string; onClick: () => void }) {

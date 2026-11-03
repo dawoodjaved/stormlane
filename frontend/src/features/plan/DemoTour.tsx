@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 const STEPS = [
   {
     title: 'Set the run',
-    body: 'Pick yard and destination, or tap a sample trip. Set gate time with Now, In 3 hours, or Tomorrow 6 AM. Load weight feeds gust and blowover rules.',
+    body: 'Pick yard and destination, or tap a sample trip. Set gate time with Now, In 3 hours, or Tomorrow 6 AM. Checkpoint spacing controls how often weather is sampled along the corridor.',
   },
   {
     title: 'Score the corridors',

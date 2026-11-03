@@ -28,3 +28,4 @@ frontend/dist/
 frontend/coverage/
 *.local
 npm-debug.log*
+.vercel

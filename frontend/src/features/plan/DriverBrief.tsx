@@ -1,3 +1,4 @@
+import { IconTruck, IconWind } from '../../components/Icons.tsx'
 import type { Plan, PlannedRoute } from '../../lib/api.ts'
 import { buildDriverBrief, briefRiskWord } from '../../lib/brief.ts'
 import { formatClock } from '../../lib/format.ts'
@@ -14,7 +15,10 @@ export function DriverBrief({ plan, route }: Props) {
   return (
     <section aria-label="Driver brief" className="border-border bg-surface rounded-sm border p-3">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-accent brand text-xs">Driver brief</p>
+        <p className="text-accent brand flex items-center gap-1.5 text-xs">
+          <IconTruck className="size-3.5" />
+          Driver brief
+        </p>
         <span
           className={`brand rounded-sm px-1.5 py-0.5 text-[0.65rem] ${
             brief.maxLevel >= 3
@@ -61,7 +65,8 @@ function PlaceBlock({
     <div className="border-border/80 border-t pt-2">
       <dt className="text-subtle brand text-[0.65rem] tracking-wide">{title}</dt>
       <dd className="text-ink mt-1 text-sm font-medium">{name}</dd>
-      <p className="text-muted mt-1 text-xs">
+      <p className="text-muted mt-1 flex items-center gap-1 text-xs">
+        <IconWind className="size-3.5 shrink-0 opacity-70" />
         ETA {formatClock(checkpoint.eta)} · Wind {checkpoint.wind_mph.toFixed(0)} mph
         {checkpoint.gust_mph > checkpoint.wind_mph
           ? ` (gusts ${checkpoint.gust_mph.toFixed(0)})`
