@@ -11,6 +11,7 @@ export function Panel({ title, children }: Props) {
 
   return (
     <aside
+      id="planner"
       aria-label={title}
       className="border-border bg-surface-raised fixed inset-x-0 bottom-0 z-10 flex max-h-[70dvh] flex-col rounded-t-2xl border-t shadow-2xl md:static md:z-auto md:h-full md:max-h-none md:w-[380px] md:shrink-0 md:rounded-none md:border-t-0 md:border-r md:shadow-none"
     >

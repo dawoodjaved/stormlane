@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: stormlane-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: REDIS_URL
+        fromService:
+          name: stormlane-cache
+          type: keyvalue
+          property: connectionString
+      - key: VALHALLA_URL
+        value: https://valhalla1.openstreetmap.de/route
+      - key: OPEN_METEO_BASE_URL
+        value: https://api.open-meteo.com/v1/forecast
+      - key: HEATMAP_MAX_CELLS
+        value: "600"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: WEB_CONCURRENCY
+        value: "2"
+
+  - type: keyvalue
+    name: stormlane-cache
+    ipAllowList: []
+    maxmemoryPolicy: allkeys-lru

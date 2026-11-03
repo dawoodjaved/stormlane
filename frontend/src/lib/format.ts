@@ -23,6 +23,18 @@ export function formatDuration(seconds: number): string {
   return `${String(hours)} h ${String(minutes).padStart(2, '0')} min`
 }
 
+export function formatClock(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
+export function formatForecastHour(startIso: string, hour: number): string {
+  return formatClock(new Date(Date.parse(startIso) + hour * 3_600_000).toISOString())
+}
+
+export function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
 export function toDateTimeLocal(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${String(date.getFullYear())}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
