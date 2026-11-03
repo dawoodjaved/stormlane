@@ -27,14 +27,6 @@ export const TRIP_PRESETS: readonly TripPreset[] = [
     load: '40000',
   },
   {
-    id: 'lax-chi',
-    label: 'Los Angeles → Chicago',
-    detail: 'About 2,000 mi, most of the 48 hours',
-    origin: { name: 'Los Angeles, California, US', lat: 34.0522, lon: -118.2437 },
-    destination: { name: 'Chicago, Illinois, US', lat: 41.8781, lon: -87.6298 },
-    load: '38000',
-  },
-  {
     id: 'chi-dal',
     label: 'Chicago → Dallas',
     detail: 'Example corridor · about 970 mi',
