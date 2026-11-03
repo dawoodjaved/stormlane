@@ -1,0 +1,211 @@
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
+
+import httpx
+import numpy as np
+import pytest
+import respx
+
+from stormlane.http import UpstreamError
+from stormlane.weather.openmeteo import (
+    GEOCODE_URL,
+    HourlySeries,
+    OpenMeteoClient,
+    grid_key,
+    sample_weather,
+)
+from tests.fakes import open_meteo_responder
+
+URL = "https://api.open-meteo.test/v1/forecast"
+START = datetime(2026, 11, 3, 10, 20, tzinfo=UTC)
+END = datetime(2026, 11, 5, 10, 20, tzinfo=UTC)
+
+
+@pytest.fixture
+async def client() -> AsyncIterator[OpenMeteoClient]:
+    async with httpx.AsyncClient() as http:
+        yield OpenMeteoClient(http, URL)
+
+
+def windy_by_latitude(lat: float, _: float) -> dict[str, float]:
+    return {"wind": lat, "gust": lat + 5, "rain": 0.1, "showers": 0.05, "snow": 0.0}
+
+
+def test_grid_key_rounds_to_hundredths() -> None:
+    assert grid_key(41.87814, -87.62979) == (41.88, -87.63)
+    assert grid_key(41.8741, -87.6261) == grid_key(41.8749, -87.6251)
+
+
+@respx.mock
+async def test_requests_hourly_imperial_window(client: OpenMeteoClient) -> None:
+    call = respx.get(URL).mock(side_effect=open_meteo_responder())
+
+    await client.hourly([(41.88, -87.63)], START, END)
+
+    params = call.calls.last.request.url.params
+    assert params["hourly"] == "wind_speed_10m,wind_gusts_10m,rain,showers,snowfall"
+    assert params["wind_speed_unit"] == "mph"
+    assert params["precipitation_unit"] == "inch"
+    assert params["timeformat"] == "unixtime"
+    assert params["start_hour"] == "2026-11-03T10:00"
+    assert params["end_hour"] == "2026-11-05T11:00"
+
+
+@respx.mock
+async def test_deduplicates_and_chunks_locations(client: OpenMeteoClient) -> None:
+    call = respx.get(URL).mock(side_effect=open_meteo_responder(windy_by_latitude))
+    keys = [(30 + i / 100, -90.0) for i in range(120)]
+
+    series = await client.hourly(keys + keys[:30], START, END)
+
+    assert call.call_count == 3
+    sizes = sorted(len(c.request.url.params["latitude"].split(",")) for c in call.calls)
+    assert sizes == [20, 50, 50]
+    assert len(series) == 120
+    assert series[(30.5, -90.0)].wind_mph[0] == pytest.approx(30.5)
+
+
+@respx.mock
+async def test_combines_rain_and_showers(client: OpenMeteoClient) -> None:
+    respx.get(URL).mock(side_effect=open_meteo_responder(windy_by_latitude))
+
+    series = await client.hourly([(40.0, -90.0)], START, END)
+
+    assert series[(40.0, -90.0)].rain_in[0] == pytest.approx(0.15)
+
+
+@respx.mock
+async def test_serves_repeat_requests_from_cache(client: OpenMeteoClient) -> None:
+    call = respx.get(URL).mock(side_effect=open_meteo_responder())
+
+    await client.hourly([(40.0, -90.0), (41.0, -90.0)], START, END)
+    await client.hourly([(40.0, -90.0), (42.0, -90.0)], START, END)
+
+    assert call.call_count == 2
+    assert call.calls.last.request.url.params["latitude"] == "42.00"
+
+
+@respx.mock
+async def test_treats_missing_values_as_zero(client: OpenMeteoClient) -> None:
+    respx.get(URL).respond(
+        json={
+            "hourly": {
+                "time": [0, 3600],
+                "wind_speed_10m": [10, None],
+                "wind_gusts_10m": [None, None],
+                "rain": [None, 0.2],
+                "showers": [None, None],
+                "snowfall": [0, 0],
+            }
+        }
+    )
+
+    series = (await client.hourly([(40.0, -90.0)], START, END))[(40.0, -90.0)]
+
+    np.testing.assert_allclose(series.wind_mph, [10, 0])
+    np.testing.assert_allclose(series.gust_mph, [0, 0])
+    np.testing.assert_allclose(series.rain_in, [0, 0.2])
+
+
+@respx.mock
+async def test_surfaces_api_errors(client: OpenMeteoClient) -> None:
+    respx.get(URL).respond(400, json={"error": True, "reason": "Latitude must be in range"})
+
+    with pytest.raises(UpstreamError, match="Latitude must be in range"):
+        await client.hourly([(40.0, -90.0)], START, END)
+
+
+@respx.mock
+async def test_geocode_parses_named_places(client: OpenMeteoClient) -> None:
+    call = respx.get(GEOCODE_URL).respond(
+        json={
+            "results": [
+                {
+                    "name": "Chicago",
+                    "latitude": 41.85,
+                    "longitude": -87.65,
+                    "admin1": "Illinois",
+                    "country": "United States",
+                    "country_code": "US",
+                },
+                {
+                    "name": "Chicago",
+                    "latitude": 41.73,
+                    "longitude": -87.7,
+                    "country": "Poland",
+                    "country_code": "PL",
+                },
+                {"name": "Chico", "latitude": 39.73, "longitude": -121.84, "admin1": "California"},
+            ]
+        }
+    )
+
+    places = await client.geocode("  chicago ")
+
+    assert places == [
+        ("Chicago, Illinois, United States", 41.85, -87.65),
+        ("Chico, California", 39.73, -121.84),
+    ]
+    params = call.calls.last.request.url.params
+    assert params["name"] == "chicago"
+    assert params["count"] == "20"
+    assert "countryCode" not in params
+
+
+@respx.mock
+async def test_geocode_empty_when_nothing_matches(client: OpenMeteoClient) -> None:
+    respx.get(GEOCODE_URL).respond(json={})
+
+    assert await client.geocode("zzzzz") == []
+
+
+@respx.mock
+async def test_geocode_uses_cache(client: OpenMeteoClient) -> None:
+    call = respx.get(GEOCODE_URL).respond(
+        json={"results": [{"name": "Dallas", "latitude": 32.78, "longitude": -96.8}]}
+    )
+
+    first = await client.geocode("Dallas")
+    second = await client.geocode("dallas")
+
+    assert first == second == [("Dallas", 32.78, -96.8)]
+    assert call.call_count == 1
+
+
+@respx.mock
+async def test_rejects_mismatched_location_count(client: OpenMeteoClient) -> None:
+    respx.get(URL).respond(json=[{"hourly": {"time": [0]}}])
+
+    with pytest.raises(UpstreamError, match="wrong number"):
+        await client.hourly([(40.0, -90.0), (41.0, -90.0)], START, END)
+
+
+def series(values: list[float]) -> HourlySeries:
+    arr = np.asarray(values, dtype=np.float64)
+    return HourlySeries(
+        time=np.array([0.0, 3600.0, 7200.0]),
+        wind_mph=arr,
+        gust_mph=arr * 2,
+        rain_in=arr / 100,
+        snow_in=arr / 10,
+    )
+
+
+def test_interpolates_between_hours() -> None:
+    weather = series([10, 30, 50]).at(np.array([1800.0, 5400.0, 9000.0]))
+
+    np.testing.assert_allclose(weather.wind_mph, [20, 40, 50])
+    np.testing.assert_allclose(weather.gust_mph, [40, 80, 100])
+
+
+def test_sample_weather_uses_each_points_cell_and_time() -> None:
+    by_key = {(40.0, -90.0): series([10, 20, 30]), (41.0, -90.0): series([50, 60, 70])}
+
+    weather = sample_weather(
+        by_key,
+        lat=np.array([40.001, 41.0, 40.0]),
+        lon=np.array([-90.0, -90.002, -90.0]),
+        timestamps=np.array([0.0, 3600.0, 7200.0]),
+    )
+
+    np.testing.assert_allclose(weather.wind_mph, [10, 60, 30])

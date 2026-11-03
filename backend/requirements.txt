@@ -1,7 +1,9 @@
 Django>=5.2.18,<5.3
 djangorestframework>=3.18,<3.19
+drf-spectacular>=0.30,<0.31
 django-cors-headers>=4.9,<5
 django-environ>=0.14,<0.15
+httpx>=0.28,<0.29
 numpy>=2.5,<3
 redis>=8.1,<9
 uvicorn[standard]>=0.54,<0.55
