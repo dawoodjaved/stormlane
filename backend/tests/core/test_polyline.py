@@ -5,7 +5,7 @@ from hypothesis import strategies as st
 
 from stormlane.core.polyline import decode, encode
 
-HERE_EXAMPLE_POINTS = [
+POINTS = [
     (50.10228, 8.69821),
     (50.10201, 8.69567),
     (50.10063, 8.69150),
@@ -13,47 +13,30 @@ HERE_EXAMPLE_POINTS = [
 ]
 
 
-def test_decodes_here_reference_example() -> None:
-    lat, lon = decode("BFoz5xJ67i1B1B7PzIhaxL7Y")
+def test_round_trip() -> None:
+    lat, lon = decode(encode(POINTS, precision=6), precision=6)
 
-    np.testing.assert_allclose(lat, [p[0] for p in HERE_EXAMPLE_POINTS])
-    np.testing.assert_allclose(lon, [p[1] for p in HERE_EXAMPLE_POINTS])
-
-
-def test_drops_third_dimension() -> None:
-    lat, lon = decode("BlBoz5xJ67i1BU1B7PUzIhaUxL7YU")
-
-    np.testing.assert_allclose(lat, [p[0] for p in HERE_EXAMPLE_POINTS])
-    np.testing.assert_allclose(lon, [p[1] for p in HERE_EXAMPLE_POINTS])
+    np.testing.assert_allclose(lat, [p[0] for p in POINTS], atol=5e-7)
+    np.testing.assert_allclose(lon, [p[1] for p in POINTS], atol=5e-7)
 
 
-def test_encode_matches_here_reference_example() -> None:
-    assert encode(HERE_EXAMPLE_POINTS) == "BFoz5xJ67i1B1B7PzIhaxL7Y"
+def test_reference_precision_5() -> None:
+    lat, lon = decode(r"_p~iF~ps|U_ulLnnqC_mqNvxq`@", precision=5)
+
+    np.testing.assert_allclose(lat, [38.5, 40.7, 43.252], atol=1e-5)
+    np.testing.assert_allclose(lon, [-120.2, -120.95, -126.453], atol=1e-5)
 
 
-def test_header_only_decodes_to_empty_route() -> None:
+def test_empty_polyline() -> None:
     lat, lon = decode(encode([]))
 
     assert lat.size == 0
     assert lon.size == 0
 
 
-@pytest.mark.parametrize(
-    ("encoded", "message"),
-    [
-        ("", "missing its header"),
-        ("C", "missing its header"),
-        ("CF", "Unsupported polyline version"),
-        ("BF!!", "invalid characters"),
-        ("BFoz5xJ67i1B1B7PzIhaxL7", "truncated"),
-        ("BFoz5xJ67i1B1B7PzIhaxL", "middle of a coordinate"),
-        ("BFé", "non-ASCII"),
-        ("BF" + "z" * 13 + "A", "out of range"),
-    ],
-)
-def test_rejects_malformed_input(encoded: str, message: str) -> None:
-    with pytest.raises(ValueError, match=message):
-        decode(encoded)
+def test_truncated_polyline() -> None:
+    with pytest.raises(ValueError, match="truncated"):
+        decode("_p~iF")
 
 
 coordinate = st.tuples(
@@ -62,9 +45,9 @@ coordinate = st.tuples(
 )
 
 
-@given(points=st.lists(coordinate, max_size=50), precision=st.integers(min_value=0, max_value=7))
+@given(points=st.lists(coordinate, max_size=50), precision=st.integers(min_value=1, max_value=7))
 def test_round_trip_within_precision(points: list[tuple[float, float]], precision: int) -> None:
-    lat, lon = decode(encode(points, precision=precision))
+    lat, lon = decode(encode(points, precision=precision), precision=precision)
 
     tolerance = 0.5 * 10.0**-precision + 1e-9
     assert lat.size == len(points)
