@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -9,7 +9,7 @@
       name="description"
       content="Weighcast scores truck corridors by load, gusts, rain, and snow — then tells you when to hold the gate."
     />
-    <meta name="theme-color" content="#141210" />
+    <meta name="theme-color" content="#e6eaf0" />
     <meta property="og:title" content="Weighcast" />
     <meta
       property="og:description"
@@ -20,10 +20,11 @@
     <script>
       try {
         var theme = localStorage.getItem('weighcast-theme')
-        document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark'
-        if (theme === 'light') {
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#d8dde4')
-        }
+        var next = theme === 'dark' ? 'dark' : 'light'
+        document.documentElement.dataset.theme = next
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute('content', next === 'dark' ? '#141210' : '#e6eaf0')
       } catch (e) {}
     </script>
   </head>
