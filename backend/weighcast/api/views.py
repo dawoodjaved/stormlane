@@ -22,12 +22,19 @@ from weighcast.api.planning import (
     load_plan,
     plan_trip,
 )
-from weighcast.http import UpstreamError, new_client
+from weighcast.http import UpstreamError, shared_client
 from weighcast.routing.types import NoRouteError
 from weighcast.routing.valhalla import ValhallaClient
 from weighcast.weather.openmeteo import OpenMeteoClient
 
 logger = logging.getLogger(__name__)
+
+
+async def _clients() -> tuple[ValhallaClient, OpenMeteoClient]:
+    http = await shared_client()
+    return ValhallaClient(http, settings.VALHALLA_URL), OpenMeteoClient(
+        http, settings.OPEN_METEO_BASE_URL
+    )
 
 
 class UnprocessableTrip(APIException):
@@ -61,9 +68,8 @@ class PlanView(APIView):
         plan_id = query.validated_data["plan_id"]
 
         async def run() -> dict[str, Any]:
-            async with new_client() as http:
-                weather = OpenMeteoClient(http, settings.OPEN_METEO_BASE_URL)
-                return await load_plan(plan_id, weather)
+            _, weather = await _clients()
+            return await load_plan(plan_id, weather)
 
         return Response(_call(run))
 
@@ -85,10 +91,8 @@ class PlanView(APIView):
         )
 
         async def run() -> dict[str, Any]:
-            async with new_client() as http:
-                weather = OpenMeteoClient(http, settings.OPEN_METEO_BASE_URL)
-                router = ValhallaClient(http, settings.VALHALLA_URL)
-                return await plan_trip(trip, router, weather)
+            router, weather = await _clients()
+            return await plan_trip(trip, router, weather)
 
         return Response(_call(run))
 
@@ -107,9 +111,8 @@ class HeatmapView(APIView):
         plan_id = query.validated_data["plan_id"]
 
         async def run() -> dict[str, Any]:
-            async with new_client() as http:
-                weather = OpenMeteoClient(http, settings.OPEN_METEO_BASE_URL)
-                return await corridor_heatmap(plan_id, weather, settings.HEATMAP_MAX_CELLS)
+            _, weather = await _clients()
+            return await corridor_heatmap(plan_id, weather, settings.HEATMAP_MAX_CELLS)
 
         return Response(_call(run))
 
@@ -128,10 +131,8 @@ class GeocodeView(APIView):
         text = query.validated_data["q"]
 
         async def run() -> dict[str, Any]:
-            async with new_client() as http:
-                return _place_results(
-                    await OpenMeteoClient(http, settings.OPEN_METEO_BASE_URL).geocode(text)
-                )
+            _, weather = await _clients()
+            return _place_results(await weather.geocode(text))
 
         return Response(_call(run))
 

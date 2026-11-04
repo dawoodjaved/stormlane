@@ -8,7 +8,10 @@ import httpx
 logger = logging.getLogger(__name__)
 
 RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
-DEFAULT_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
+DEFAULT_TIMEOUT = httpx.Timeout(8.0, connect=3.0)
+
+_shared: httpx.AsyncClient | None = None
+_shared_lock = asyncio.Lock()
 
 
 class UpstreamError(Exception):
@@ -18,7 +21,22 @@ class UpstreamError(Exception):
 
 
 def new_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(timeout=DEFAULT_TIMEOUT, headers={"User-Agent": "weighcast/1.0"})
+    return httpx.AsyncClient(
+        timeout=DEFAULT_TIMEOUT,
+        headers={"User-Agent": "weighcast/1.0"},
+        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+    )
+
+
+async def shared_client() -> httpx.AsyncClient:
+    """Process-wide client so TLS handshakes to Valhalla/Open-Meteo are reused."""
+    global _shared
+    if _shared is not None and not _shared.is_closed:
+        return _shared
+    async with _shared_lock:
+        if _shared is None or _shared.is_closed:
+            _shared = new_client()
+        return _shared
 
 
 async def get_with_retry(

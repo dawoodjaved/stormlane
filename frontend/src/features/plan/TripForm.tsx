@@ -82,6 +82,7 @@ export function TripForm({ pending, onSubmit }: Props) {
       destination: preset.destination,
       load: preset.load,
       loadUnit: 'lb',
+      interval: 50,
       departure: toDateTimeLocal(new Date()),
       formKey: state.formKey + 1,
     }))

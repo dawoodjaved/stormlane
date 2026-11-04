@@ -34,7 +34,8 @@ from weighcast.weather.openmeteo import OpenMeteoClient, grid_key, sample_weathe
 
 HORIZON_HOURS = 48
 PLAN_TTL_S = 30 * 60
-CORRIDOR_SAMPLE_M = 1_000.0
+# Coarser corridor samples → fewer heatmap cells / faster follow-up fetches.
+CORRIDOR_SAMPLE_M = 5_000.0
 _COORD_NAME = re.compile(r"^-?\d+(?:\.\d+)?,\s*-?\d+(?:\.\d+)?$")
 
 
@@ -64,17 +65,26 @@ async def plan_trip(
     routes = await router.truck_routes(trip.origin, trip.destination, trip.departure, trip.load_lb)
     profiles = [build_profile(r.lat, r.lon, r.spans) for r in routes]
     checkpoints = [sample_checkpoints(p, trip.interval_miles * METERS_PER_MILE) for p in profiles]
-
     max_duration_s = max(p.total_duration_s for p in profiles)
-    start, end = _forecast_window(trip.departure, max_duration_s)
     demo_weather = trip.weather_mode in {"storm", "calm"}
+
+    # Places with real names skip Nominatim; resolve in parallel with weather.
+    places_task = asyncio.gather(
+        _resolved_place(weather, trip.origin, trip.origin_name),
+        _resolved_place(weather, trip.destination, trip.destination_name),
+    )
+
     series: dict = {}
     if not demo_weather:
-        keys = [
-            grid_key(lat, lon)
-            for cp in checkpoints
-            for lat, lon in zip(cp.lat, cp.lon, strict=True)
-        ]
+        # Plan scoring only needs weather along ETAs — not the full 48h heatmap window.
+        start, end = _trip_weather_window(trip.departure, max_duration_s)
+        keys = list(
+            dict.fromkeys(
+                grid_key(lat, lon)
+                for cp in checkpoints
+                for lat, lon in zip(cp.lat, cp.lon, strict=True)
+            )
+        )
         series = await weather.hourly(keys, start, end)
 
     departure_ts = trip.departure.timestamp()
@@ -103,10 +113,7 @@ async def plan_trip(
 
     recommendation = rank(risks)
     plan_id = uuid4().hex
-    origin, destination = await asyncio.gather(
-        _resolved_place(weather, trip.origin, trip.origin_name),
-        _resolved_place(weather, trip.destination, trip.destination_name),
-    )
+    origin, destination = await places_task
     body = {
         "plan_id": plan_id,
         "departure": trip.departure.isoformat(),
@@ -199,7 +206,7 @@ async def corridor_heatmap(
             grid.lon,
         )
     else:
-        start, end = _forecast_window(departure, plan["max_duration_s"])
+        start, end = _heatmap_weather_window(departure, plan["max_duration_s"])
         keys = [grid_key(lat, lon) for lat, lon in zip(grid.lat, grid.lon, strict=True)]
         series = await weather.hourly(keys, start, end)
         stamps = departure.timestamp() + 3600.0 * np.arange(hours, dtype=np.float64)
@@ -280,9 +287,21 @@ def _route_payload(
     }
 
 
-def _forecast_window(departure: datetime, duration_s: float) -> tuple[datetime, datetime]:
+def _trip_weather_window(departure: datetime, duration_s: float) -> tuple[datetime, datetime]:
+    """Hours needed for checkpoint ETAs only (plan scoring)."""
+    pad = timedelta(hours=1)
+    return departure, departure + timedelta(seconds=max(duration_s, 0.0)) + pad
+
+
+def _heatmap_weather_window(departure: datetime, duration_s: float) -> tuple[datetime, datetime]:
+    """Full leave-later horizon for the corridor heatmap."""
     span = max(timedelta(hours=HORIZON_HOURS), timedelta(seconds=duration_s))
     return departure, departure + span
+
+
+def _forecast_window(departure: datetime, duration_s: float) -> tuple[datetime, datetime]:
+    """Back-compat alias used by tests / callers expecting the heatmap window."""
+    return _heatmap_weather_window(departure, duration_s)
 
 
 def _route_label(route_id: str, via: str) -> str:
